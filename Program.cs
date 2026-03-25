@@ -24,11 +24,12 @@ builder.Services.AddHttpClient("windowswap", c =>
 // ── Anthropic client ─────────────────────────────────────────────────────────
 builder.Services.AddSingleton(sp =>
 {
-    var apiKey = builder.Configuration["Anthropic:ApiKey"]
-              ?? Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY")
-              ?? throw new InvalidOperationException(
-                    "Anthropic API key not configured. " +
-                    "Set Anthropic:ApiKey in appsettings or ANTHROPIC_API_KEY env var.");
+    var apiKey = builder.Configuration["Anthropic:ApiKey"] is { Length: > 0 } cfgKey
+                    ? cfgKey
+                    : Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY")
+                      ?? throw new InvalidOperationException(
+                            "Anthropic API key not configured. " +
+                            "Set Anthropic:ApiKey in appsettings or ANTHROPIC_API_KEY env var.");
     return new AnthropicClient(new APIAuthentication(apiKey));
 });
 
@@ -48,7 +49,6 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
 app.UseAntiforgery();
 
 // ── WindowSwap reverse proxy ──────────────────────────────────────────────────
