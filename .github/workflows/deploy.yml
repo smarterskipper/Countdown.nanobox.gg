@@ -16,20 +16,16 @@ jobs:
         run: |
           SHORT_SHA="${{ github.sha }}"
           SHORT_SHA="${SHORT_SHA:0:7}"
+          PAYLOAD=$(jq -n \
+            --arg sha "$SHORT_SHA" \
+            --arg msg "${{ github.event.head_commit.message }}" \
+            --arg actor "${{ github.actor }}" \
+            --arg run_num "${{ github.run_number }}" \
+            --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            '{embeds:[{title:"🔨 Deploy started",description:("`"+$sha+"`  "+$msg),color:16776960,fields:[{name:"Triggered by",value:$actor,inline:true},{name:"Run",value:("[#"+$run_num+"]("+$run_url+")"),inline:true}],footer:{text:"HomelabCountdown CI/CD"}}]}')
           curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"🔨 Deploy started\",
-                \"description\": \"\`${SHORT_SHA}\`  ${{ github.event.head_commit.message }}\",
-                \"color\": 16776960,
-                \"fields\": [
-                  {\"name\": \"Triggered by\", \"value\": \"${{ github.actor }}\", \"inline\": true},
-                  {\"name\": \"Run\", \"value\": \"[#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\", \"inline\": true}
-                ],
-                \"footer\": {\"text\": \"HomelabCountdown CI/CD\"}
-              }]
-            }"
+            -d "$PAYLOAD"
 
       # ── 1. Pull latest code ───────────────────────────────────────────────
       - name: Checkout
@@ -84,21 +80,15 @@ jobs:
         run: |
           SHORT_SHA="${{ github.sha }}"
           SHORT_SHA="${SHORT_SHA:0:7}"
+          PAYLOAD=$(jq -n \
+            --arg sha "$SHORT_SHA" \
+            --arg msg "${{ github.event.head_commit.message }}" \
+            --arg actor "${{ github.actor }}" \
+            --arg branch "${{ github.ref_name }}" \
+            '{embeds:[{title:"✅ Deploy succeeded",description:"**countdown.nanobox.gg** is live",color:3066993,fields:[{name:"Commit",value:("`"+$sha+"`  "+$msg),inline:false},{name:"Triggered by",value:$actor,inline:true},{name:"Branch",value:$branch,inline:true}],footer:{text:"HomelabCountdown CI/CD"}}]}')
           curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"✅ Deploy succeeded\",
-                \"description\": \"**countdown.nanobox.gg** is live\",
-                \"color\": 3066993,
-                \"fields\": [
-                  {\"name\": \"Commit\", \"value\": \"\`${SHORT_SHA}\`  ${{ github.event.head_commit.message }}\", \"inline\": false},
-                  {\"name\": \"Triggered by\", \"value\": \"${{ github.actor }}\", \"inline\": true},
-                  {\"name\": \"Branch\", \"value\": \"${{ github.ref_name }}\", \"inline\": true}
-                ],
-                \"footer\": {\"text\": \"HomelabCountdown CI/CD\"}
-              }]
-            }"
+            -d "$PAYLOAD"
 
       # ── 8. Discord failure notification ───────────────────────────────────
       - name: Notify Discord — failure
@@ -106,17 +96,12 @@ jobs:
         run: |
           SHORT_SHA="${{ github.sha }}"
           SHORT_SHA="${SHORT_SHA:0:7}"
+          PAYLOAD=$(jq -n \
+            --arg sha "$SHORT_SHA" \
+            --arg msg "${{ github.event.head_commit.message }}" \
+            --arg actor "${{ github.actor }}" \
+            --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            '{embeds:[{title:"❌ Deploy failed",description:("Check the [workflow logs]("+$run_url+") for details."),color:15158332,fields:[{name:"Commit",value:("`"+$sha+"`  "+$msg),inline:false},{name:"Triggered by",value:$actor,inline:true}],footer:{text:"HomelabCountdown CI/CD"}}]}')
           curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"❌ Deploy failed\",
-                \"description\": \"Check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.\",
-                \"color\": 15158332,
-                \"fields\": [
-                  {\"name\": \"Commit\", \"value\": \"\`${SHORT_SHA}\`  ${{ github.event.head_commit.message }}\", \"inline\": false},
-                  {\"name\": \"Triggered by\", \"value\": \"${{ github.actor }}\", \"inline\": true}
-                ],
-                \"footer\": {\"text\": \"HomelabCountdown CI/CD\"}
-              }]
-            }"
+            -d "$PAYLOAD"
