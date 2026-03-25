@@ -3,12 +3,12 @@ name: Build & Deploy
 on:
   push:
     branches: [master]
-  workflow_dispatch:        # lets you trigger manually from GitHub UI
+  workflow_dispatch:        # lets you trigger manually from the GitHub UI
 
 jobs:
   deploy:
     name: Deploy to Homelab LXC
-    runs-on: self-hosted     # uses the runner installed on your LXC
+    runs-on: self-hosted     # the runner agent installed on your LXC
 
     steps:
       # ── 1. Pull latest code ───────────────────────────────────────────────
@@ -28,7 +28,7 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
-      # ── 4. Publish self-contained to /opt/homecountdown ───────────────────
+      # ── 4. Publish to staging directory ───────────────────────────────────
       - name: Publish
         run: |
           dotnet publish \
@@ -36,7 +36,19 @@ jobs:
             --output /opt/homecountdown/next \
             --no-build
 
-      # ── 5. Swap and restart (zero-ish downtime) ───────────────────────────
+      # ── 5. Write secrets to protected env file ────────────────────────────
+      # Secrets come from GitHub → Settings → Secrets and variables → Actions.
+      # They are NEVER echoed in logs (GitHub redacts them automatically).
+      # The file is chmod 600 so only root and the service can read it.
+      - name: Write environment secrets
+        run: |
+          sudo tee /etc/homecountdown.env > /dev/null << 'ENVEOF'
+          ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+          ENVEOF
+          sudo chmod 600 /etc/homecountdown.env
+          sudo chown root:root /etc/homecountdown.env
+
+      # ── 6. Swap release and restart ───────────────────────────────────────
       - name: Swap release and restart service
         run: |
           sudo systemctl stop homecountdown || true
@@ -44,7 +56,7 @@ jobs:
           sudo mv /opt/homecountdown/next /opt/homecountdown/current
           sudo systemctl start homecountdown
 
-      # ── 6. Health check ───────────────────────────────────────────────────
+      # ── 7. Health check ───────────────────────────────────────────────────
       - name: Health check
         run: |
           sleep 5

@@ -79,12 +79,17 @@ cd "$RUNNER_HOME"
 ./svc.sh start
 
 echo "==> Granting runner permission to manage the app service (passwordless sudo)"
+# Scope is intentionally narrow — runner can only do these specific commands.
+# It cannot read /etc/homecountdown.env (root:root 600), only write/replace it.
 cat > /etc/sudoers.d/runner-homecountdown << 'EOF'
 runner ALL=(ALL) NOPASSWD: /bin/systemctl start homecountdown
 runner ALL=(ALL) NOPASSWD: /bin/systemctl stop homecountdown
 runner ALL=(ALL) NOPASSWD: /bin/systemctl restart homecountdown
 runner ALL=(ALL) NOPASSWD: /bin/rm -rf /opt/homecountdown/current
 runner ALL=(ALL) NOPASSWD: /bin/mv /opt/homecountdown/next /opt/homecountdown/current
+runner ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/homecountdown.env
+runner ALL=(ALL) NOPASSWD: /bin/chmod 600 /etc/homecountdown.env
+runner ALL=(ALL) NOPASSWD: /bin/chown root\:root /etc/homecountdown.env
 EOF
 chmod 440 /etc/sudoers.d/runner-homecountdown
 

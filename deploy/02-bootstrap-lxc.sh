@@ -5,21 +5,17 @@
 # Run this ONCE on a fresh Debian 12 LXC (as root).
 # Installs: .NET 9, Playwright system deps, nginx, systemd service.
 #
+# API keys are NOT set here — they live in GitHub Secrets and are injected
+# into /etc/homecountdown.env by the CI/CD workflow on every deploy.
+#
 # Usage:
 #   bash deploy/02-bootstrap-lxc.sh
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
-ANTHROPIC_API_KEY=""          # sk-ant-...  (required)
-APP_DOMAIN=""                 # e.g. countdown.yourdomain.com (for nginx server_name)
-                              # leave blank to use IP-based access only
+APP_DOMAIN=""    # e.g. countdown.yourdomain.com — leave blank for IP-only access
 # ─────────────────────────────────────────────────────────────────────────────
-
-if [[ -z "$ANTHROPIC_API_KEY" ]]; then
-  echo "ERROR: Set ANTHROPIC_API_KEY at the top of this script."
-  exit 1
-fi
 
 echo "==> System update"
 apt-get update -qq && apt-get upgrade -y -qq
@@ -43,12 +39,20 @@ apt-get install -y -qq \
 echo "==> Installing nginx"
 apt-get install -y -qq nginx
 
-echo "==> Creating app directories"
+echo "==> Creating app and secrets directories"
 mkdir -p /opt/homecountdown/current
 mkdir -p /opt/homecountdown/next
 
+# Create the env file with placeholder — CI/CD will overwrite it on first deploy
+touch /etc/homecountdown.env
+chmod 600 /etc/homecountdown.env
+chown root:root /etc/homecountdown.env
+
 echo "==> Writing systemd service"
-cat > /etc/systemd/system/homecountdown.service << EOF
+# Note: secrets come from EnvironmentFile, NOT from this file.
+# /etc/homecountdown.env is written by the GitHub Actions workflow on every
+# deploy using the value stored in GitHub Secrets — never committed to git.
+cat > /etc/systemd/system/homecountdown.service << 'EOF'
 [Unit]
 Description=HomelabCountdown Blazor App
 After=network.target
@@ -61,12 +65,13 @@ ExecStart=/opt/homecountdown/current/HomelabCountdown
 Restart=on-failure
 RestartSec=5
 
+# Static environment
 Environment=ASPNETCORE_ENVIRONMENT=Production
 Environment=ASPNETCORE_URLS=http://0.0.0.0:5000
-Environment=ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-
-# Playwright needs a writable home dir for browser cache
 Environment=HOME=/home/runner
+
+# Secrets injected here by CI/CD — file is chmod 600, never in git
+EnvironmentFile=/etc/homecountdown.env
 
 StandardOutput=journal
 StandardError=journal
@@ -78,7 +83,7 @@ EOF
 
 systemctl daemon-reload
 systemctl enable homecountdown
-echo "   (service enabled but not started yet — no binary deployed yet)"
+echo "   (service enabled — will start automatically after first deploy)"
 
 echo "==> Writing nginx config"
 NGINX_SERVER_NAME="${APP_DOMAIN:-_}"
@@ -88,7 +93,7 @@ server {
     listen 80;
     server_name ${NGINX_SERVER_NAME};
 
-    # Pass WebSocket upgrade for Blazor SignalR
+    # Pass WebSocket upgrades for Blazor SignalR
     location / {
         proxy_pass         http://127.0.0.1:5000;
         proxy_http_version 1.1;
@@ -107,10 +112,15 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl restart nginx
 
 echo ""
-echo "✓ Bootstrap complete."
+echo "✓ Bootstrap complete. Secrets are managed via GitHub — not this machine."
+echo ""
+echo "  To add your Anthropic API key:"
+echo "    gh secret set ANTHROPIC_API_KEY --repo smarterskipper/Countdown.nanobox.gg"
+echo "  Or: github.com/smarterskipper/Countdown.nanobox.gg/settings/secrets/actions"
 echo ""
 echo "  Next steps:"
-echo "  1. Run deploy/01-install-runner.sh to register the GitHub Actions runner"
-echo "  2. Push to master — GitHub Actions will build and deploy automatically"
-echo "  3. (Optional) Install Cloudflare Tunnel: deploy/03-cloudflare-tunnel.sh"
+echo "  1. Run deploy/01-install-runner.sh  (register GitHub Actions runner)"
+echo "  2. Set ANTHROPIC_API_KEY in GitHub Secrets (above)"
+echo "  3. Push to master — CI/CD deploys the app and injects the key"
+echo "  4. (Optional) deploy/03-cloudflare-tunnel.sh"
 echo ""
