@@ -1,0 +1,53 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:        # lets you trigger manually from GitHub UI
+
+jobs:
+  deploy:
+    name: Deploy to Homelab LXC
+    runs-on: self-hosted     # uses the runner installed on your LXC
+
+    steps:
+      # ── 1. Pull latest code ───────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Set up .NET ────────────────────────────────────────────────────
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      # ── 3. Restore & build ────────────────────────────────────────────────
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      # ── 4. Publish self-contained to /opt/homecountdown ───────────────────
+      - name: Publish
+        run: |
+          dotnet publish \
+            --configuration Release \
+            --output /opt/homecountdown/next \
+            --no-build
+
+      # ── 5. Swap and restart (zero-ish downtime) ───────────────────────────
+      - name: Swap release and restart service
+        run: |
+          sudo systemctl stop homecountdown || true
+          sudo rm -rf /opt/homecountdown/current
+          sudo mv /opt/homecountdown/next /opt/homecountdown/current
+          sudo systemctl start homecountdown
+
+      # ── 6. Health check ───────────────────────────────────────────────────
+      - name: Health check
+        run: |
+          sleep 5
+          curl --fail --silent --max-time 10 http://localhost:5000 \
+            && echo "✓ App is responding" \
+            || (echo "✗ Health check failed" && sudo journalctl -u homecountdown -n 30 && exit 1)
