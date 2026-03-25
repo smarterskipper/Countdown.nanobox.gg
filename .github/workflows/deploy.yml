@@ -11,6 +11,26 @@ jobs:
     runs-on: self-hosted
 
     steps:
+      # ── 0. Discord — deploy started ───────────────────────────────────────
+      - name: Notify Discord — started
+        run: |
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"🔨 Deploy started\",
+                \"description\": \"\`${SHORT_SHA}\`  ${{ github.event.head_commit.message }}\",
+                \"color\": 16776960,
+                \"fields\": [
+                  {\"name\": \"Triggered by\", \"value\": \"${{ github.actor }}\", \"inline\": true},
+                  {\"name\": \"Run\", \"value\": \"[#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\", \"inline\": true}
+                ],
+                \"footer\": {\"text\": \"HomelabCountdown CI/CD\"}
+              }]
+            }"
+
       # ── 1. Pull latest code ───────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
