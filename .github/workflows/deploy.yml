@@ -15,13 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── 2. Set up .NET ────────────────────────────────────────────────────
-      - name: Setup .NET 9
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-
-      # ── 3. Restore & build ────────────────────────────────────────────────
+      # ── 2. Restore & build ────────────────────────────────────────────────
       - name: Restore dependencies
         run: dotnet restore
 
