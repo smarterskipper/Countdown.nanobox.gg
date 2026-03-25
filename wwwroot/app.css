@@ -1,0 +1,452 @@
+/* ── Reset & base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Roboto', 'Segoe UI', sans-serif;
+    background: #0f0f1a;
+    color: #e2e8f0;
+}
+
+/* ── Art background ───────────────────────────────────────────────────────── */
+.art-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.art-bg svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* ── Dark scrim overlay ───────────────────────────────────────────────────── */
+.scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    background: radial-gradient(
+        ellipse at center,
+        rgba(0,0,0,0.15) 0%,
+        rgba(0,0,0,0.65) 100%
+    );
+    backdrop-filter: blur(1px);
+}
+
+/* ── Top navigation bar ───────────────────────────────────────────────────── */
+.topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: rgba(0,0,0,0.25);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.topbar-brand {
+    font-size: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    color: rgba(255,255,255,0.6);
+    text-transform: uppercase;
+}
+
+.topbar-links { display: flex; gap: 1.5rem; align-items: center; }
+
+.topbar-link {
+    color: rgba(255,255,255,0.75);
+    text-decoration: none;
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+}
+.topbar-link:hover { color: #fff; }
+
+/* ── Countdown center card ────────────────────────────────────────────────── */
+.countdown-center {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.countdown-card {
+    pointer-events: auto;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 1.5rem;
+    padding: 2.5rem 3.5rem;
+    text-align: center;
+    min-width: 380px;
+    max-width: 520px;
+    box-shadow: 0 25px 80px rgba(0,0,0,0.6);
+}
+
+.loading-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 3rem 4rem;
+}
+
+.loading-text {
+    color: rgba(255,255,255,0.6);
+    font-size: 0.95rem;
+}
+
+/* ── Days number ──────────────────────────────────────────────────────────── */
+.days-number {
+    font-size: clamp(5rem, 12vw, 8rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    transition: color 1s ease;
+}
+
+.days-label {
+    font-size: 1rem;
+    font-weight: 300;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.55);
+    margin-top: 0.4rem;
+    margin-bottom: 1.8rem;
+}
+
+/* ── Progress bar ─────────────────────────────────────────────────────────── */
+.progress-track {
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.12);
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1),
+                background 1s ease;
+}
+
+.progress-label {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 1.8rem;
+}
+
+/* ── Holiday line ─────────────────────────────────────────────────────────── */
+.holiday-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.holiday-flag { font-size: 1.4rem; }
+
+.holiday-name {
+    font-weight: 500;
+    color: #fff;
+}
+
+.holiday-country {
+    color: rgba(255,255,255,0.5);
+    font-size: 0.9rem;
+}
+
+/* ── Art credit ───────────────────────────────────────────────────────────── */
+.art-credit {
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.25);
+    letter-spacing: 0.05em;
+    margin-top: 0.25rem;
+}
+
+/* ── WindowSwap PiP ───────────────────────────────────────────────────────── */
+.windowswap-pip {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 20;
+    width: 360px;
+    height: 240px;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+    border: 1px solid rgba(255,255,255,0.15);
+    display: flex;
+    flex-direction: column;
+    animation: pip-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes pip-in {
+    from { transform: scale(0.85) translateY(20px); opacity: 0; }
+    to   { transform: scale(1) translateY(0);     opacity: 1; }
+}
+
+.pip-titlebar {
+    background: rgba(0,0,0,0.8);
+    padding: 0.4rem 0.75rem;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.6);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.pip-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0;
+    line-height: 1;
+}
+.pip-close:hover { color: #fff; }
+
+.windowswap-pip iframe {
+    flex: 1;
+    border: none;
+    width: 100%;
+}
+
+/* ── Gallery page ─────────────────────────────────────────────────────────── */
+.gallery-page {
+    min-height: 100vh;
+    background: #0f0f1a;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+html:has(.gallery-page),
+body:has(.gallery-page) {
+    overflow: auto;
+    height: auto;
+}
+
+.gallery-header {
+    max-width: 1200px;
+    margin: 0 auto 2.5rem;
+    padding-top: 1rem;
+}
+
+.gallery-back {
+    color: rgba(255,255,255,0.5);
+    text-decoration: none;
+    font-size: 0.9rem;
+    display: block;
+    margin-bottom: 1rem;
+    transition: color 0.2s;
+}
+.gallery-back:hover { color: #fff; }
+
+.gallery-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.gallery-subtitle {
+    color: rgba(255,255,255,0.45);
+    margin-top: 0.3rem;
+    font-size: 0.95rem;
+}
+
+.gallery-grid {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.5rem;
+}
+
+.gallery-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 1rem;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
+}
+
+.gallery-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    border-color: var(--accent, #f59e0b);
+}
+
+.gallery-card--active {
+    border-color: var(--accent, #f59e0b);
+    box-shadow: 0 0 0 2px var(--accent, #f59e0b);
+}
+
+.gallery-card-img {
+    aspect-ratio: 3/2;
+    overflow: hidden;
+    background: #1a1a2e;
+}
+
+.gallery-card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.4s ease;
+}
+.gallery-card:hover .gallery-card-img img { transform: scale(1.04); }
+
+.gallery-card-info {
+    padding: 0.9rem 1rem;
+}
+
+.gallery-card-date {
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.25rem;
+}
+
+.gallery-card-holiday {
+    font-weight: 600;
+    color: #fff;
+    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gallery-card-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.45);
+}
+
+.gallery-card-score {
+    color: var(--accent, #f59e0b);
+    font-weight: 500;
+}
+
+.gallery-empty { padding: 4rem 2rem; }
+
+/* ── Gallery detail modal ─────────────────────────────────────────────────── */
+.gallery-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    animation: fade-in 0.2s ease;
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.gallery-modal {
+    background: #1a1a2e;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 1.5rem;
+    max-width: 800px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    animation: modal-in 0.25s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+@keyframes modal-in {
+    from { transform: scale(0.92); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+}
+
+.gallery-modal-close {
+    position: absolute;
+    top: 1rem; right: 1rem;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 50%;
+    width: 2rem; height: 2rem;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    transition: background 0.2s;
+}
+.gallery-modal-close:hover { background: rgba(255,255,255,0.15); }
+
+.gallery-modal-img {
+    width: 100%;
+    border-radius: 1.5rem 1.5rem 0 0;
+    display: block;
+}
+
+.gallery-modal-body {
+    padding: 1.5rem 2rem 2rem;
+}
+
+.gallery-modal-body h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.4rem;
+}
+
+.gallery-modal-country {
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 0.5rem;
+}
+
+.gallery-modal-theme {
+    color: rgba(255,255,255,0.4);
+    font-size: 0.88rem;
+    font-style: italic;
+    margin-bottom: 0.5rem;
+}
+
+.gallery-modal-stats {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.35);
+    margin-bottom: 0.75rem;
+}
+
+.gallery-modal-critique {
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.4);
+    font-style: italic;
+    border-left: 2px solid rgba(255,255,255,0.12);
+    padding-left: 0.75rem;
+}
