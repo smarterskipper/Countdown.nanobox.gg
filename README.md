@@ -14,24 +14,21 @@ HomelabCountdown/
 │   ├── App.razor               # HTML shell, MudBlazor CSS/JS
 │   ├── Layout/MainLayout.razor # MudBlazor theme provider (no sidebar)
 │   └── Pages/
-│       ├── Home.razor          # Countdown + art background + WindowSwap PiP
+│       ├── Home.razor          # Countdown + art background
 │       └── Gallery.razor       # Grid of all past daily art pieces
 ├── Models/
 │   ├── DailyArt.cs             # Metadata model (serialised to JSON cache)
 │   └── HolidayInfo.cs          # Holiday DTO
 ├── Services/
 │   ├── HolidayService.cs       # Nager.Date — finds today's world holiday
-│   ├── ArtCacheService.cs      # Read/write art to wwwroot/art-cache/
+│   ├── ArtCacheService.cs      # Read/write art to /var/lib/homecountdown/art-cache/ (persistent)
 │   ├── PlaywrightScreenshotService.cs  # Renders SVG → PNG via headless Chromium
 │   ├── ArtGenerationService.cs # Agentic loop: generate → screenshot → score → refine
-│   └── DailyArtHostedService.cs        # BackgroundService: runs on startup + daily at midnight
+│   ├── DailyArtHostedService.cs        # BackgroundService: runs on startup + daily at midnight
+│   └── DiscordNotificationService.cs  # Posts art + deploy events to Discord webhook
 ├── wwwroot/
-│   ├── app.css                 # All custom styles (dark, glassmorphism)
-│   └── art-cache/              # RUNTIME ONLY — git-ignored
-│       ├── YYYY-MM-DD.svg      # Winning SVG art
-│       ├── YYYY-MM-DD.png      # Playwright screenshot
-│       └── YYYY-MM-DD.json     # DailyArt metadata
-└── Program.cs                  # DI, MudBlazor, WindowSwap proxy endpoint
+│   └── app.css                 # All custom styles (dark, glassmorphism)
+└── Program.cs                  # DI, MudBlazor, persistent art-cache static files
 ```
 
 ---
@@ -45,8 +42,9 @@ DailyArtHostedService (startup + midnight)
         │   ├─ Claude claude-sonnet-4-6: generate SVG (system prompt + holiday context + prior critique)
         │   ├─ PlaywrightScreenshotService: render SVG → 900×600 PNG
         │   └─ Claude claude-sonnet-4-6 vision: score screenshot (JSON: score, critique, palette)
-        └─ Cache winner → wwwroot/art-cache/{date}.{svg,png,json}
-           └─ ArtCacheService.OnArtGenerated fires → Home.razor updates via SignalR
+        └─ Cache winner → /var/lib/homecountdown/art-cache/{date}.{svg,png,json}
+           ├─ ArtCacheService.OnArtGenerated fires → Home.razor updates via SignalR
+           └─ DiscordNotificationService → posts embed to Discord webhook
 ```
 
 Pass threshold: **score ≥ 8/10**. If max attempts (3) reached, keeps the best result regardless.
@@ -62,7 +60,7 @@ Pass threshold: **score ≥ 8/10**. If max attempts (3) reached, keeps the best 
 | Holidays | Nager.Date 2.x (offline, no API key) |
 | AI | Anthropic.SDK 5 → `claude-sonnet-4-6` |
 | Screenshots | Microsoft.Playwright 1.x → headless Chromium |
-| Proxy | Built-in minimal API endpoint (`/api/windowswap`) |
+| Notifications | Discord webhooks (CI/CD events + daily art) |
 | Reverse proxy | nginx on LXC |
 | Tunnel | Cloudflare Tunnel (no port-forwarding) |
 | Version control | GitHub |
