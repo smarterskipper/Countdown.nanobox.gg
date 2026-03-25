@@ -69,7 +69,7 @@ public class ArtCacheService
     public List<DailyArt> GetAllCachedArt()
     {
         var result = new List<DailyArt>();
-        foreach (var file in Directory.GetFiles(_cacheDir, "*.json"))
+        foreach (var file in Directory.GetFiles(_cacheDir, "????-??-??.json"))
         {
             try
             {
@@ -83,6 +83,26 @@ public class ArtCacheService
         return result.OrderByDescending(a => a.Date).ToList();
     }
 
+    public WeatherEffect? GetWeatherForDate(DateOnly date)
+    {
+        var path = WeatherPath(date);
+        if (!File.Exists(path)) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<WeatherEffect>(File.ReadAllText(path));
+        }
+        catch { return null; }
+    }
+
+    public async Task SaveWeatherAsync(WeatherEffect effect)
+    {
+        await File.WriteAllTextAsync(WeatherPath(effect.Date),
+            JsonSerializer.Serialize(effect, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
     private string MetaPath(DateOnly date) =>
         Path.Combine(_cacheDir, $"{date:yyyy-MM-dd}.json");
+
+    private string WeatherPath(DateOnly date) =>
+        Path.Combine(_cacheDir, $"weather-{date:yyyy-MM-dd}.json");
 }

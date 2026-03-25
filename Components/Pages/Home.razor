@@ -1,6 +1,7 @@
 @page "/"
 @rendermode InteractiveServer
 @inject ArtCacheService ArtCache
+@inject WeatherService Weather
 @inject NavigationManager Nav
 @implements IDisposable
 
@@ -14,7 +15,6 @@
     }
     else
     {
-        <!-- fallback gradient while generating -->
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" width="100%" height="100%">
             <defs>
                 <linearGradient id="fbg" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -27,12 +27,21 @@
     }
 </div>
 
-<!-- ── Dark overlay scrim ── -->
-<div class="scrim"></div>
+<!-- ── Weather particle overlay ── -->
+@if (_weather is not null)
+{
+    <div class="weather-overlay weather-@_weather.Type" style="--weather-color: @_weather.Color;">
+        @for (int i = 0; i < _particles.Count; i++)
+        {
+            var p = _particles[i];
+            <div class="weather-particle" style="@p"></div>
+        }
+    </div>
+}
 
 <!-- ── Top nav bar ── -->
 <div class="topbar">
-    <span class="topbar-brand">✦ homelab</span>
+    <span class="topbar-brand">✦ CountDown</span>
     <div class="topbar-links">
         <a href="/gallery" class="topbar-link">Gallery</a>
     </div>
@@ -40,7 +49,6 @@
 
 <!-- ── Main countdown card ── -->
 <div class="countdown-center">
-
     @if (_art is null)
     {
         <div class="countdown-card loading-card">
@@ -85,19 +93,32 @@
     }
 </div>
 
+<!-- ── Weather info card ── -->
+@if (_weather is not null)
+{
+    <div class="weather-card">
+        <span class="weather-card-icon">@WeatherIcon(_weather.Type)</span>
+        <p class="weather-card-desc">@_weather.Description</p>
+        <span class="weather-card-location">📍 @_weather.Location</span>
+    </div>
+}
 
 @code {
     private static readonly DateOnly Target = new(2026, 8, 5);
-    private static readonly DateOnly CountdownStart = new(2026, 1, 1);
+    private static readonly DateOnly CountdownStart = new(2024, 2, 5); // 2.5 years before target
 
     private DailyArt? _art;
     private string? _svgContent;
+    private WeatherEffect? _weather;
+    private List<string> _particles = [];
     private int _daysRemaining;
     private double _progressPercent;
+
     protected override void OnInitialized()
     {
         ArtCache.OnArtGenerated += HandleArtGenerated;
         LoadArt();
+        LoadWeather();
         CalculateCountdown();
     }
 
@@ -109,6 +130,14 @@
             _svgContent = ArtCache.ReadSvgContent(today);
     }
 
+    private void LoadWeather()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        _weather = ArtCache.GetWeatherForDate(today);
+        if (_weather is not null)
+            _particles = BuildParticles(_weather);
+    }
+
     private void HandleArtGenerated(DailyArt art)
     {
         if (art.Date != DateOnly.FromDateTime(DateTime.Today)) return;
@@ -116,6 +145,8 @@
         {
             _art = art;
             _svgContent = ArtCache.ReadSvgContent(art.Date);
+            // Also try to load weather if it just became available
+            if (_weather is null) LoadWeather();
             StateHasChanged();
         });
     }
@@ -132,12 +163,64 @@
             : 100;
     }
 
+    private static List<string> BuildParticles(WeatherEffect w)
+    {
+        var rng = new Random(w.Date.DayNumber); // seeded so consistent per day
+        var particles = new List<string>();
+        int count = w.Type switch
+        {
+            "rain" or "storm" => 70,
+            "snow" => 45,
+            "sun" or "heat" => 20,
+            "aurora" => 15,
+            _ => 30
+        };
+
+        for (int i = 0; i < count; i++)
+        {
+            var left = rng.Next(0, 100);
+            var delay = rng.Next(0, 4000);
+            var dur = w.Type switch
+            {
+                "rain" or "storm" => rng.Next(400, 900),
+                "snow" => rng.Next(3000, 8000),
+                "aurora" => rng.Next(6000, 14000),
+                _ => rng.Next(2000, 6000)
+            };
+            var size = w.Type switch
+            {
+                "rain" or "storm" => $"width:1px;height:{rng.Next(12,22)}px",
+                "snow" => $"width:{rng.Next(3,7)}px;height:{rng.Next(3,7)}px",
+                "sun" => $"width:{rng.Next(2,5)}px;height:{rng.Next(2,5)}px",
+                "aurora" => $"width:{rng.Next(80,200)}px;height:{rng.Next(2,5)}px",
+                _ => $"width:{rng.Next(4,10)}px;height:{rng.Next(4,10)}px"
+            };
+            var top = w.Type == "aurora" ? rng.Next(5, 40) : -10;
+            particles.Add($"left:{left}%;top:{top}%;{size};animation-delay:{delay}ms;animation-duration:{dur}ms");
+        }
+        return particles;
+    }
+
     private string ArtBgStyle => _art is null
         ? "background: linear-gradient(135deg, #0f0f1a 0%, #1a1a3e 100%);"
         : "";
 
     private static string GetFlag(string countryCode) => countryCode.Length != 2 ? "🌍" :
         string.Concat(countryCode.ToUpperInvariant().Select(c => char.ConvertFromUtf32(c + 0x1F1A5)));
+
+    private static string WeatherIcon(string type) => type switch
+    {
+        "rain" => "🌧",
+        "storm" => "⛈",
+        "snow" => "❄️",
+        "sun" => "☀️",
+        "heat" => "🌡",
+        "wind" => "💨",
+        "fog" => "🌫",
+        "aurora" => "🌌",
+        "cloud" => "☁️",
+        _ => "🌤"
+    };
 
     public void Dispose() => ArtCache.OnArtGenerated -= HandleArtGenerated;
 }

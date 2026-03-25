@@ -33,6 +33,7 @@ builder.Services.AddSingleton<PlaywrightScreenshotService>();
 builder.Services.AddSingleton<DiscordNotificationService>();
 builder.Services.AddScoped<HolidayService>();
 builder.Services.AddScoped<ArtGenerationService>();
+builder.Services.AddScoped<WeatherService>();
 builder.Services.AddHostedService<DailyArtHostedService>();
 
 var app = builder.Build();

@@ -46,30 +46,37 @@ public class DailyArtHostedService : BackgroundService
         {
             using var scope = _services.CreateScope();
             var cache = scope.ServiceProvider.GetRequiredService<ArtCacheService>();
+            var holidayService = scope.ServiceProvider.GetRequiredService<HolidayService>();
 
-            if (cache.GetArtForDate(date) is not null)
+            // Generate art
+            if (cache.GetArtForDate(date) is null)
+            {
+                var artGen = scope.ServiceProvider.GetRequiredService<ArtGenerationService>();
+                var holiday = holidayService.GetHolidayForDate(date)
+                           ?? holidayService.GetFallbackHoliday(date);
+
+                _logger.LogInformation("Generating art for {Date}: {Holiday} in {Country}",
+                    date, holiday.Name, holiday.CountryName);
+
+                var art = await artGen.GenerateAndCacheAsync(date, holiday);
+                var discord = scope.ServiceProvider.GetRequiredService<DiscordNotificationService>();
+                await discord.NotifyArtGeneratedAsync(art);
+            }
+            else
             {
                 _logger.LogInformation("Art already exists for {Date}, skipping generation", date);
-                return;
             }
 
-            var holidayService = scope.ServiceProvider.GetRequiredService<HolidayService>();
-            var artGen = scope.ServiceProvider.GetRequiredService<ArtGenerationService>();
-
-            var holiday = holidayService.GetHolidayForDate(date)
-                       ?? holidayService.GetFallbackHoliday(date);
-
-            _logger.LogInformation("Generating art for {Date}: {Holiday} in {Country}",
-                date, holiday.Name, holiday.CountryName);
-
-            var art = await artGen.GenerateAndCacheAsync(date, holiday);
-
-            var discord = scope.ServiceProvider.GetRequiredService<DiscordNotificationService>();
-            await discord.NotifyArtGeneratedAsync(art);
+            // Generate weather effect
+            if (cache.GetWeatherForDate(date) is null)
+            {
+                var weather = scope.ServiceProvider.GetRequiredService<WeatherService>();
+                await weather.GenerateAndCacheAsync(date);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Art generation failed for {Date}", date);
+            _logger.LogError(ex, "Daily generation failed for {Date}", date);
         }
     }
 }

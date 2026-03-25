@@ -100,7 +100,7 @@ public partial class ArtGenerationService
             : "";
 
         var prompt = $$"""
-            You are a world-class SVG artist. Create a breathtaking, full-viewport SVG artwork celebrating:
+            You are a world-class SVG artist creating a living, animated full-screen artwork celebrating:
 
             Holiday: {{holiday.Name}}
             Local Name: {{holiday.LocalName}}
@@ -108,23 +108,34 @@ public partial class ArtGenerationService
             Date: {{holiday.Date:MMMM d, yyyy}}
             {{critiqueSection}}
 
-            STRICT REQUIREMENTS:
-            1. Output ONLY valid SVG — starting with <svg and ending with </svg>. No markdown, no explanation.
-            2. Use viewBox="0 0 900 600" with width="100%" height="100%"
-            3. Use rich gradients, patterns, and symbolic shapes tied to this holiday and culture
-            4. Include the holiday name as beautiful, styled text within the SVG
-            5. Use at least 3 harmonious colors in gradients/fills
-            6. Make it visually striking enough to be a website full-screen background
-            7. The artwork should feel culturally authentic and celebratory
-            8. REQUIRED — include a <style> block with at least 3 distinct CSS @keyframes animations:
-               - A slow float or drift on background particles/shapes (translate, subtle scale)
-               - A pulse or glow on the main focal element (opacity, filter, or scale)
-               - A shimmer, rotate, or color-cycle on decorative accents
-               Use animation-duration between 3s–12s, animation-timing-function: ease-in-out, animation-iteration-count: infinite.
-               Apply animations via class names on SVG elements (e.g. class="float1", class="pulse").
-               CSS animations work in inline SVG — use them freely for a living, breathing background.
-            9. Embed this comment EXACTLY (with real hex values) before the closing </svg> tag:
-               <!-- ARTMETA: {"primaryColor":"#XXXXXX","secondaryColor":"#XXXXXX","accentColor":"#XXXXXX","theme":"short theme description"} -->
+            ═══ COMPOSITION (must have all three layers) ═══
+            BACKGROUND: Atmospheric sky, landscape, or environment using rich multi-stop gradients.
+              Include stars, clouds, aurora, or weather tied to the culture/season.
+            MIDGROUND: At least ONE recognizable cultural element — a famous landmark, architectural
+              silhouette, mountain, ocean, forest, or traditional pattern specific to {{holiday.CountryName}}.
+            FOREGROUND: Detailed symbolic objects, flora, or figures. A particle system of 10–20 small
+              elements (petals, sparks, snowflakes, lanterns, stars, fireflies) scattered across canvas.
+
+            ═══ ANIMATION (mandatory — this is a living background) ═══
+            Include a <style> block with MINIMUM 6 distinct CSS @keyframes:
+              1. Sky/atmosphere slow shift — gradient color change or slow pan (20–40s)
+              2. Particle drift — staggered float+sway on the 10–20 small elements (4–10s, vary delay)
+              3. Focal element pulse — scale + glow breathing on the main cultural symbol (3–6s)
+              4. Secondary element movement — rotation, orbit, or wave on decorative shapes (6–15s)
+              5. Ambient light sweep — subtle brightness ripple or shadow sweep across scene (10–25s)
+              6. Text shimmer — color or opacity animation on the holiday name text (4–8s)
+            Use animation-iteration-count: infinite, ease-in-out. Apply via class names.
+
+            ═══ TECHNICAL ═══
+            - viewBox="0 0 900 600", width="100%", height="100%"
+            - Use SVG <filter> for at least one glow effect:
+              <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            - Rich palette: minimum 5 gradient stops across multiple gradients
+            - Holiday name rendered as large, decorative SVG <text> with a custom font-family,
+              letter-spacing, and the shimmer animation applied
+            - Output ONLY valid SVG starting with <svg — no markdown, no explanation
+            - Before </svg> embed EXACTLY:
+              <!-- ARTMETA: {"primaryColor":"#XXXXXX","secondaryColor":"#XXXXXX","accentColor":"#XXXXXX","theme":"2-4 word theme"} -->
 
             Output only the SVG XML.
             """;
@@ -134,7 +145,7 @@ public partial class ArtGenerationService
         {
             Messages = messages,
             Model = AnthropicModels.Claude46Sonnet,
-            MaxTokens = 4096,
+            MaxTokens = 8000,
             Stream = false,
             Temperature = 1.0m
         };
