@@ -1,0 +1,29 @@
+## .NET / Visual Studio
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userprefs
+
+## Rider
+.idea/
+
+## Secrets — never commit API keys
+appsettings.*.local.json
+secrets.json
+
+## Art cache — generated at runtime, not versioned
+wwwroot/art-cache/
+
+## Playwright browser binaries
+.playwright/
+
+## OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## Logs
+*.log
+logs/
