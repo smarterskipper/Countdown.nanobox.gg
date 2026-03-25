@@ -53,8 +53,7 @@ jobs:
             '${{ secrets.ANTHROPIC_API_KEY }}' \
             '${{ secrets.DISCORD_WEBHOOK_URL }}' \
             | sudo tee /etc/homecountdown.env > /dev/null
-          sudo mkdir -p /var/lib/homecountdown/art-cache
-          sudo chown runner:runner /var/lib/homecountdown/art-cache
+          mkdir -p /var/lib/homecountdown/art-cache
           sudo chmod 600 /etc/homecountdown.env
 
       # ── 5. Swap release and restart ───────────────────────────────────────
