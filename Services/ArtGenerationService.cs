@@ -116,7 +116,14 @@ public partial class ArtGenerationService
             5. Use at least 3 harmonious colors in gradients/fills
             6. Make it visually striking enough to be a website full-screen background
             7. The artwork should feel culturally authentic and celebratory
-            8. Embed this comment EXACTLY (with real hex values) before the closing </svg> tag:
+            8. REQUIRED — include a <style> block with at least 3 distinct CSS @keyframes animations:
+               - A slow float or drift on background particles/shapes (translate, subtle scale)
+               - A pulse or glow on the main focal element (opacity, filter, or scale)
+               - A shimmer, rotate, or color-cycle on decorative accents
+               Use animation-duration between 3s–12s, animation-timing-function: ease-in-out, animation-iteration-count: infinite.
+               Apply animations via class names on SVG elements (e.g. class="float1", class="pulse").
+               CSS animations work in inline SVG — use them freely for a living, breathing background.
+            9. Embed this comment EXACTLY (with real hex values) before the closing </svg> tag:
                <!-- ARTMETA: {"primaryColor":"#XXXXXX","secondaryColor":"#XXXXXX","accentColor":"#XXXXXX","theme":"short theme description"} -->
 
             Output only the SVG XML.
