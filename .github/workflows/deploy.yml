@@ -37,16 +37,12 @@ jobs:
             --no-build
 
       # ── 5. Write secrets to protected env file ────────────────────────────
-      # Secrets come from GitHub → Settings → Secrets and variables → Actions.
-      # They are NEVER echoed in logs (GitHub redacts them automatically).
-      # The file is chmod 600 so only root and the service can read it.
       - name: Write environment secrets
         run: |
-          sudo tee /etc/homecountdown.env > /dev/null << 'ENVEOF'
-          ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
-          ENVEOF
+          printf 'ANTHROPIC_API_KEY=%s\nASPNETCORE_URLS=http://0.0.0.0:5000\nASPNETCORE_ENVIRONMENT=Production\n' \
+            '${{ secrets.ANTHROPIC_API_KEY }}' \
+            | sudo tee /etc/homecountdown.env > /dev/null
           sudo chmod 600 /etc/homecountdown.env
-          sudo chown root:root /etc/homecountdown.env
 
       # ── 6. Swap release and restart ───────────────────────────────────────
       - name: Swap release and restart service
@@ -54,12 +50,13 @@ jobs:
           sudo systemctl stop homecountdown || true
           sudo rm -rf /opt/homecountdown/current
           sudo mv /opt/homecountdown/next /opt/homecountdown/current
+          mkdir -p /opt/homecountdown/next
           sudo systemctl start homecountdown
 
       # ── 7. Health check ───────────────────────────────────────────────────
       - name: Health check
         run: |
-          sleep 5
-          curl --fail --silent --max-time 10 http://localhost:5000 \
+          sleep 8
+          curl --fail --silent --max-time 15 http://localhost:5000 \
             && echo "✓ App is responding" \
             || (echo "✗ Health check failed" && sudo journalctl -u homecountdown -n 30 && exit 1)
