@@ -1,6 +1,5 @@
 using System.Text.Json;
 using HomelabCountdown.Models;
-using Microsoft.AspNetCore.Hosting;
 
 namespace HomelabCountdown.Services;
 
@@ -11,11 +10,14 @@ public class ArtCacheService
 
     public event Action<DailyArt>? OnArtGenerated;
 
-    public ArtCacheService(IWebHostEnvironment env, ILogger<ArtCacheService> logger)
+    public ArtCacheService(IConfiguration config, ILogger<ArtCacheService> logger)
     {
         _logger = logger;
-        _cacheDir = Path.Combine(env.WebRootPath, "art-cache");
+        _cacheDir = config["ArtCache:Path"] is { Length: > 0 } p
+            ? p
+            : Path.Combine(AppContext.BaseDirectory, "art-cache");
         Directory.CreateDirectory(_cacheDir);
+        _logger.LogInformation("Art cache directory: {Dir}", _cacheDir);
     }
 
     public DailyArt? GetArtForDate(DateOnly date)

@@ -2,9 +2,9 @@ import axios from "axios";
 import https from "https";
 export class ProxmoxApi {
     http;
-    node;
+    defaultNode;
     constructor(host, apiToken, node) {
-        this.node = node;
+        this.defaultNode = node;
         this.http = axios.create({
             baseURL: `https://${host}:8006/api2/json`,
             headers: {
@@ -20,8 +20,9 @@ export class ProxmoxApi {
         const { data } = await this.http.get("/nodes");
         return data.data;
     }
-    async listLxcs() {
-        const { data } = await this.http.get(`/nodes/${this.node}/lxc`);
+    async listLxcs(node) {
+        const n = node ?? this.defaultNode;
+        const { data } = await this.http.get(`/nodes/${n}/lxc`);
         return data.data.map((c) => ({
             vmid: c.vmid,
             name: c.name,
@@ -32,11 +33,20 @@ export class ProxmoxApi {
             uptime: c.uptime,
         }));
     }
-    async getLxcStatus(vmid) {
-        const { data } = await this.http.get(`/nodes/${this.node}/lxc/${vmid}/status/current`);
+    async listAllLxcs() {
+        const nodes = await this.listNodes();
+        const results = await Promise.all(nodes.filter(n => n.status === "online").map(async (n) => {
+            const lxcs = await this.listLxcs(n.node);
+            return lxcs.map(c => ({ ...c, node: n.node }));
+        }));
+        return results.flat();
+    }
+    async getLxcStatus(vmid, node) {
+        const n = node ?? this.defaultNode;
+        const { data } = await this.http.get(`/nodes/${n}/lxc/${vmid}/status/current`);
         return data.data;
     }
-    async createLxc(opts) {
+    async createLxc(opts, node) {
         const netConfig = opts.netIp === "dhcp" || !opts.netIp
             ? `name=eth0,bridge=${opts.bridge ?? "vmbr0"},ip=dhcp`
             : `name=eth0,bridge=${opts.bridge ?? "vmbr0"},ip=${opts.netIp},gw=${opts.netGw}`;
@@ -58,34 +68,34 @@ export class ProxmoxApi {
             payload["ssh-public-keys"] = opts.sshPublicKey;
         if (opts.nameserver)
             payload.nameserver = opts.nameserver;
-        const { data } = await this.http.post(`/nodes/${this.node}/lxc`, payload);
+        const { data } = await this.http.post(`/nodes/${node ?? this.defaultNode}/lxc`, payload);
         return data.data; // task ID (UPID)
     }
-    async startLxc(vmid) {
-        const { data } = await this.http.post(`/nodes/${this.node}/lxc/${vmid}/status/start`);
+    async startLxc(vmid, node) {
+        const { data } = await this.http.post(`/nodes/${node ?? this.defaultNode}/lxc/${vmid}/status/start`);
         return data.data;
     }
-    async stopLxc(vmid) {
-        const { data } = await this.http.post(`/nodes/${this.node}/lxc/${vmid}/status/stop`);
+    async stopLxc(vmid, node) {
+        const { data } = await this.http.post(`/nodes/${node ?? this.defaultNode}/lxc/${vmid}/status/stop`);
         return data.data;
     }
-    async rebootLxc(vmid) {
-        const { data } = await this.http.post(`/nodes/${this.node}/lxc/${vmid}/status/reboot`);
+    async rebootLxc(vmid, node) {
+        const { data } = await this.http.post(`/nodes/${node ?? this.defaultNode}/lxc/${vmid}/status/reboot`);
         return data.data;
     }
-    async destroyLxc(vmid) {
-        const { data } = await this.http.delete(`/nodes/${this.node}/lxc/${vmid}`);
+    async destroyLxc(vmid, node) {
+        const { data } = await this.http.delete(`/nodes/${node ?? this.defaultNode}/lxc/${vmid}`);
         return data.data;
     }
-    async getTaskStatus(upid) {
+    async getTaskStatus(upid, node) {
         const encoded = encodeURIComponent(upid);
-        const { data } = await this.http.get(`/nodes/${this.node}/tasks/${encoded}/status`);
+        const { data } = await this.http.get(`/nodes/${node ?? this.defaultNode}/tasks/${encoded}/status`);
         return data.data;
     }
-    async waitForTask(upid, timeoutMs = 120_000) {
+    async waitForTask(upid, timeoutMs = 120_000, node) {
         const deadline = Date.now() + timeoutMs;
         while (Date.now() < deadline) {
-            const task = await this.getTaskStatus(upid);
+            const task = await this.getTaskStatus(upid, node);
             if (task.status === "stopped") {
                 if (task.exitstatus !== "OK") {
                     throw new Error(`Task ${upid} failed: ${task.exitstatus}`);
@@ -96,14 +106,15 @@ export class ProxmoxApi {
         }
         throw new Error(`Task ${upid} timed out after ${timeoutMs}ms`);
     }
-    async listTemplates(storage) {
-        const { data } = await this.http.get(`/nodes/${this.node}/storage/${storage}/content`, {
+    async listTemplates(storage, node) {
+        const n = node ?? this.defaultNode;
+        const { data } = await this.http.get(`/nodes/${n}/storage/${storage}/content`, {
             params: { content: "vztmpl" },
         });
         return data.data ?? [];
     }
-    async downloadTemplate(storage, template) {
-        const { data } = await this.http.post(`/nodes/${this.node}/aplinfo`, {
+    async downloadTemplate(storage, template, node) {
+        const { data } = await this.http.post(`/nodes/${node ?? this.defaultNode}/aplinfo`, {
             storage,
             template,
         });

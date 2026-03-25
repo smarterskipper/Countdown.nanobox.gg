@@ -34,13 +34,32 @@ const server = new McpServer({
   version: "1.0.0",
 });
 
+// Optional node param reused across tools
+const nodeParam = z.string().optional().describe("Proxmox node name (e.g. pve1, pve2). Defaults to configured node.");
+
+// ── Tool: list_nodes ──────────────────────────────────────────────────────────
+server.tool(
+  "list_nodes",
+  "List all nodes in the Proxmox cluster with their status and resources",
+  {},
+  async () => {
+    const nodes = await api.listNodes();
+    const rows = nodes.map((n) =>
+      `${n.node.padEnd(10)} ${n.status.padEnd(8)} ${n.maxcpu}cpu  ${Math.round((n as any).maxmem / 1024 / 1024 / 1024)}GB RAM`
+    );
+    return {
+      content: [{ type: "text", text: ["NODE       STATUS   RESOURCES", ...rows].join("\n") }],
+    };
+  }
+);
+
 // ── Tool: list_lxcs ───────────────────────────────────────────────────────────
 server.tool(
   "list_lxcs",
-  "List all LXC containers on the Proxmox node with their status, CPU, memory",
-  {},
-  async () => {
-    const lxcs = await api.listLxcs();
+  "List all LXC containers on a Proxmox node with their status, CPU, memory",
+  { node: nodeParam },
+  async ({ node }) => {
+    const lxcs = await api.listLxcs(node);
     const rows = lxcs.map((c) =>
       `${c.vmid.toString().padEnd(6)} ${c.name?.padEnd(24) ?? "<unnamed>".padEnd(24)} ` +
       `${c.status.padEnd(10)} ${c.cpus}cpu  ` +
@@ -52,13 +71,30 @@ server.tool(
   }
 );
 
+// ── Tool: list_all_lxcs ───────────────────────────────────────────────────────
+server.tool(
+  "list_all_lxcs",
+  "List ALL LXC containers across every node in the cluster",
+  {},
+  async () => {
+    const lxcs = await api.listAllLxcs();
+    const rows = lxcs.map((c) =>
+      `${c.node.padEnd(8)} ${c.vmid.toString().padEnd(6)} ${c.name?.padEnd(24) ?? "<unnamed>".padEnd(24)} ` +
+      `${c.status.padEnd(10)} ${c.cpus}cpu  ${Math.round(c.maxmem / 1024 / 1024)}MB`
+    );
+    return {
+      content: [{ type: "text", text: ["NODE     VMID   NAME                     STATUS     RESOURCES", ...rows].join("\n") }],
+    };
+  }
+);
+
 // ── Tool: get_lxc_status ──────────────────────────────────────────────────────
 server.tool(
   "get_lxc_status",
   "Get detailed status of a specific LXC container",
-  { vmid: z.number().describe("Container ID") },
-  async ({ vmid }) => {
-    const status = await api.getLxcStatus(vmid);
+  { vmid: z.number().describe("Container ID"), node: nodeParam },
+  async ({ vmid, node }) => {
+    const status = await api.getLxcStatus(vmid, node);
     return { content: [{ type: "text", text: JSON.stringify(status, null, 2) }] };
   }
 );
@@ -68,6 +104,7 @@ server.tool(
   "create_lxc",
   "Create a new LXC container on Proxmox. Waits for the task to complete before returning.",
   {
+    node:          nodeParam,
     vmid:          z.number().optional().describe("Container ID (omit to auto-assign)"),
     hostname:      z.string().describe("Hostname for the container"),
     ostemplate:    z.string().describe('Template, e.g. "local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst"'),
@@ -84,10 +121,10 @@ server.tool(
   },
   async (opts) => {
     const vmid = opts.vmid ?? await api.getNextVmid();
-    const upid = await api.createLxc({ ...opts, vmid });
-    await api.waitForTask(upid, 120_000);
+    const upid = await api.createLxc({ ...opts, vmid }, opts.node);
+    await api.waitForTask(upid, 120_000, opts.node);
     return {
-      content: [{ type: "text", text: `✓ Container ${vmid} (${opts.hostname}) created successfully.` }],
+      content: [{ type: "text", text: `✓ Container ${vmid} (${opts.hostname}) created successfully on ${opts.node ?? api.defaultNode}.` }],
     };
   }
 );
@@ -96,10 +133,10 @@ server.tool(
 server.tool(
   "start_lxc",
   "Start a stopped LXC container",
-  { vmid: z.number().describe("Container ID") },
-  async ({ vmid }) => {
-    const upid = await api.startLxc(vmid);
-    await api.waitForTask(upid, 30_000);
+  { vmid: z.number().describe("Container ID"), node: nodeParam },
+  async ({ vmid, node }) => {
+    const upid = await api.startLxc(vmid, node);
+    await api.waitForTask(upid, 30_000, node);
     return { content: [{ type: "text", text: `✓ Container ${vmid} started.` }] };
   }
 );
@@ -108,10 +145,10 @@ server.tool(
 server.tool(
   "stop_lxc",
   "Stop a running LXC container",
-  { vmid: z.number().describe("Container ID") },
-  async ({ vmid }) => {
-    const upid = await api.stopLxc(vmid);
-    await api.waitForTask(upid, 30_000);
+  { vmid: z.number().describe("Container ID"), node: nodeParam },
+  async ({ vmid, node }) => {
+    const upid = await api.stopLxc(vmid, node);
+    await api.waitForTask(upid, 30_000, node);
     return { content: [{ type: "text", text: `✓ Container ${vmid} stopped.` }] };
   }
 );
@@ -120,10 +157,10 @@ server.tool(
 server.tool(
   "destroy_lxc",
   "Permanently destroy an LXC container. Stop it first if running.",
-  { vmid: z.number().describe("Container ID") },
-  async ({ vmid }) => {
-    const upid = await api.destroyLxc(vmid);
-    await api.waitForTask(upid, 60_000);
+  { vmid: z.number().describe("Container ID"), node: nodeParam },
+  async ({ vmid, node }) => {
+    const upid = await api.destroyLxc(vmid, node);
+    await api.waitForTask(upid, 60_000, node);
     return { content: [{ type: "text", text: `✓ Container ${vmid} destroyed.` }] };
   }
 );
@@ -201,9 +238,9 @@ server.tool(
 server.tool(
   "list_templates",
   "List available LXC OS templates on a Proxmox storage",
-  { storage: z.string().default("local").describe("Storage name") },
-  async ({ storage }) => {
-    const templates = await api.listTemplates(storage);
+  { storage: z.string().default("local").describe("Storage name"), node: nodeParam },
+  async ({ storage, node }) => {
+    const templates = await api.listTemplates(storage, node);
     if (templates.length === 0) return { content: [{ type: "text", text: "No templates found." }] };
     const lines = templates.map((t) => t.volid);
     return { content: [{ type: "text", text: lines.join("\n") }] };

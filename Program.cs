@@ -12,14 +12,8 @@ builder.Services.AddMudServices();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// ── HttpClient for WindowSwap proxy ──────────────────────────────────────────
-builder.Services.AddHttpClient("windowswap", c =>
-{
-    c.BaseAddress = new Uri("https://www.window-swap.com/");
-    c.DefaultRequestHeaders.UserAgent.ParseAdd(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-    c.Timeout = TimeSpan.FromSeconds(15);
-});
+// ── HttpClient (used by DiscordNotificationService) ───────────────────────────
+builder.Services.AddHttpClient();
 
 // ── Anthropic client ─────────────────────────────────────────────────────────
 builder.Services.AddSingleton(sp =>
@@ -52,27 +46,15 @@ if (!app.Environment.IsDevelopment())
 
 app.UseAntiforgery();
 
-// ── WindowSwap reverse proxy ──────────────────────────────────────────────────
-// Fetches the target URL, strips X-Frame-Options so it embeds in our iframe.
-app.MapGet("/api/windowswap", async (HttpContext ctx, IHttpClientFactory factory) =>
+// ── Persistent art-cache static files ────────────────────────────────────────
+var artCachePath = app.Configuration["ArtCache:Path"] is { Length: > 0 } p
+    ? p
+    : Path.Combine(AppContext.BaseDirectory, "art-cache");
+Directory.CreateDirectory(artCachePath);
+app.UseStaticFiles(new StaticFileOptions
 {
-    var client = factory.CreateClient("windowswap");
-    try
-    {
-        var upstream = await client.GetAsync("/");
-        var body = await upstream.Content.ReadAsStringAsync();
-        var contentType = upstream.Content.Headers.ContentType?.ToString() ?? "text/html";
-
-        ctx.Response.Headers.Remove("X-Frame-Options");
-        ctx.Response.Headers.Remove("Content-Security-Policy");
-        ctx.Response.ContentType = contentType;
-        await ctx.Response.WriteAsync(body);
-    }
-    catch
-    {
-        ctx.Response.StatusCode = 502;
-        await ctx.Response.WriteAsync("WindowSwap unavailable");
-    }
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(artCachePath),
+    RequestPath = "/art-cache"
 });
 
 app.MapStaticAssets();

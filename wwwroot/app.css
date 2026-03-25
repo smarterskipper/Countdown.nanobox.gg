@@ -200,55 +200,6 @@ html, body {
     margin-top: 0.25rem;
 }
 
-/* ── WindowSwap PiP ───────────────────────────────────────────────────────── */
-.windowswap-pip {
-    position: fixed;
-    bottom: 2rem;
-    right: 2rem;
-    z-index: 20;
-    width: 360px;
-    height: 240px;
-    border-radius: 1rem;
-    overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
-    border: 1px solid rgba(255,255,255,0.15);
-    display: flex;
-    flex-direction: column;
-    animation: pip-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes pip-in {
-    from { transform: scale(0.85) translateY(20px); opacity: 0; }
-    to   { transform: scale(1) translateY(0);     opacity: 1; }
-}
-
-.pip-titlebar {
-    background: rgba(0,0,0,0.8);
-    padding: 0.4rem 0.75rem;
-    font-size: 0.75rem;
-    color: rgba(255,255,255,0.6);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-shrink: 0;
-}
-
-.pip-close {
-    background: none;
-    border: none;
-    color: rgba(255,255,255,0.5);
-    cursor: pointer;
-    font-size: 0.85rem;
-    padding: 0;
-    line-height: 1;
-}
-.pip-close:hover { color: #fff; }
-
-.windowswap-pip iframe {
-    flex: 1;
-    border: none;
-    width: 100%;
-}
 
 /* ── Gallery page ─────────────────────────────────────────────────────────── */
 .gallery-page {

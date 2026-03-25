@@ -26,7 +26,7 @@ export interface CreateLxcOptions {
 }
 export declare class ProxmoxApi {
     private http;
-    private node;
+    readonly defaultNode: string;
     constructor(host: string, apiToken: string, node: string);
     listNodes(): Promise<Array<{
         node: string;
@@ -34,22 +34,25 @@ export declare class ProxmoxApi {
         cpu: number;
         maxcpu: number;
     }>>;
-    listLxcs(): Promise<LxcSummary[]>;
-    getLxcStatus(vmid: number): Promise<Record<string, unknown>>;
-    createLxc(opts: CreateLxcOptions): Promise<string>;
-    startLxc(vmid: number): Promise<string>;
-    stopLxc(vmid: number): Promise<string>;
-    rebootLxc(vmid: number): Promise<string>;
-    destroyLxc(vmid: number): Promise<string>;
-    getTaskStatus(upid: string): Promise<{
+    listLxcs(node?: string): Promise<LxcSummary[]>;
+    listAllLxcs(): Promise<Array<LxcSummary & {
+        node: string;
+    }>>;
+    getLxcStatus(vmid: number, node?: string): Promise<Record<string, unknown>>;
+    createLxc(opts: CreateLxcOptions, node?: string): Promise<string>;
+    startLxc(vmid: number, node?: string): Promise<string>;
+    stopLxc(vmid: number, node?: string): Promise<string>;
+    rebootLxc(vmid: number, node?: string): Promise<string>;
+    destroyLxc(vmid: number, node?: string): Promise<string>;
+    getTaskStatus(upid: string, node?: string): Promise<{
         status: string;
         exitstatus?: string;
     }>;
-    waitForTask(upid: string, timeoutMs?: number): Promise<void>;
-    listTemplates(storage: string): Promise<Array<{
+    waitForTask(upid: string, timeoutMs?: number, node?: string): Promise<void>;
+    listTemplates(storage: string, node?: string): Promise<Array<{
         volid: string;
         content: string;
     }>>;
-    downloadTemplate(storage: string, template: string): Promise<string>;
+    downloadTemplate(storage: string, template: string, node?: string): Promise<string>;
     getNextVmid(): Promise<number>;
 }

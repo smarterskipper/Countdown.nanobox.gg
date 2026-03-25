@@ -15,6 +15,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.28.0",
     "axios": "^1.13.6",
+    "libsodium-wrappers": "^0.8.2",
     "ssh2": "^1.17.0"
   },
   "devDependencies": {

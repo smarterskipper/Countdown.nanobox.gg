@@ -35,9 +35,6 @@
     <span class="topbar-brand">✦ homelab</span>
     <div class="topbar-links">
         <a href="/gallery" class="topbar-link">Gallery</a>
-        <button class="topbar-link btn-link" @onclick="ToggleWindowSwap">
-            @(_showWindowSwap ? "✕ Close window" : "🪟 Watch a window")
-        </button>
     </div>
 </div>
 
@@ -88,21 +85,6 @@
     }
 </div>
 
-<!-- ── WindowSwap picture-in-picture ── -->
-@if (_showWindowSwap)
-{
-    <div class="windowswap-pip">
-        <div class="pip-titlebar">
-            <span>🪟 somewhere in the world</span>
-            <button class="pip-close" @onclick="ToggleWindowSwap">✕</button>
-        </div>
-        <iframe src="/api/windowswap"
-                title="WindowSwap"
-                sandbox="allow-scripts allow-same-origin allow-forms"
-                loading="lazy">
-        </iframe>
-    </div>
-}
 
 @code {
     private static readonly DateOnly Target = new(2026, 8, 5);
@@ -112,8 +94,6 @@
     private string? _svgContent;
     private int _daysRemaining;
     private double _progressPercent;
-    private bool _showWindowSwap;
-
     protected override void OnInitialized()
     {
         ArtCache.OnArtGenerated += HandleArtGenerated;
@@ -151,8 +131,6 @@
             ? Math.Min(100, Math.Max(0, (double)elapsed / totalDays * 100))
             : 100;
     }
-
-    private void ToggleWindowSwap() => _showWindowSwap = !_showWindowSwap;
 
     private string ArtBgStyle => _art is null
         ? "background: linear-gradient(135deg, #0f0f1a 0%, #1a1a3e 100%);"
