@@ -36,6 +36,7 @@ builder.Services.AddSingleton(sp =>
 // ── App services ──────────────────────────────────────────────────────────────
 builder.Services.AddSingleton<ArtCacheService>();
 builder.Services.AddSingleton<PlaywrightScreenshotService>();
+builder.Services.AddSingleton<DiscordNotificationService>();
 builder.Services.AddScoped<HolidayService>();
 builder.Services.AddScoped<ArtGenerationService>();
 builder.Services.AddHostedService<DailyArtHostedService>();

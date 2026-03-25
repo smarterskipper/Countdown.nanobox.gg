@@ -62,7 +62,10 @@ public class DailyArtHostedService : BackgroundService
             _logger.LogInformation("Generating art for {Date}: {Holiday} in {Country}",
                 date, holiday.Name, holiday.CountryName);
 
-            await artGen.GenerateAndCacheAsync(date, holiday);
+            var art = await artGen.GenerateAndCacheAsync(date, holiday);
+
+            var discord = scope.ServiceProvider.GetRequiredService<DiscordNotificationService>();
+            await discord.NotifyArtGeneratedAsync(art);
         }
         catch (Exception ex)
         {

@@ -3,12 +3,12 @@ name: Build & Deploy
 on:
   push:
     branches: [master]
-  workflow_dispatch:        # lets you trigger manually from the GitHub UI
+  workflow_dispatch:
 
 jobs:
   deploy:
     name: Deploy to Homelab LXC
-    runs-on: self-hosted     # the runner agent installed on your LXC
+    runs-on: self-hosted
 
     steps:
       # ── 1. Pull latest code ───────────────────────────────────────────────
@@ -22,7 +22,7 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
-      # ── 4. Publish to staging directory ───────────────────────────────────
+      # ── 3. Publish to staging directory ───────────────────────────────────
       - name: Publish
         run: |
           dotnet publish \
@@ -30,15 +30,16 @@ jobs:
             --output /opt/homecountdown/next \
             --no-build
 
-      # ── 5. Write secrets to protected env file ────────────────────────────
+      # ── 4. Write secrets to protected env file ────────────────────────────
       - name: Write environment secrets
         run: |
-          printf 'ANTHROPIC_API_KEY=%s\nASPNETCORE_URLS=http://0.0.0.0:5000\nASPNETCORE_ENVIRONMENT=Production\n' \
+          printf 'ANTHROPIC_API_KEY=%s\nDISCORD_WEBHOOK_URL=%s\nASPNETCORE_URLS=http://0.0.0.0:5000\nASPNETCORE_ENVIRONMENT=Production\nPLAYWRIGHT_BROWSERS_PATH=/home/runner/.cache/ms-playwright\n' \
             '${{ secrets.ANTHROPIC_API_KEY }}' \
+            '${{ secrets.DISCORD_WEBHOOK_URL }}' \
             | sudo tee /etc/homecountdown.env > /dev/null
           sudo chmod 600 /etc/homecountdown.env
 
-      # ── 6. Swap release and restart ───────────────────────────────────────
+      # ── 5. Swap release and restart ───────────────────────────────────────
       - name: Swap release and restart service
         run: |
           sudo systemctl stop homecountdown || true
@@ -47,10 +48,53 @@ jobs:
           mkdir -p /opt/homecountdown/next
           sudo systemctl start homecountdown
 
-      # ── 7. Health check ───────────────────────────────────────────────────
+      # ── 6. Health check ───────────────────────────────────────────────────
       - name: Health check
         run: |
           sleep 8
           curl --fail --silent --max-time 15 http://localhost:5000 \
             && echo "✓ App is responding" \
             || (echo "✗ Health check failed" && sudo journalctl -u homecountdown -n 30 && exit 1)
+
+      # ── 7. Discord success notification ───────────────────────────────────
+      - name: Notify Discord — success
+        if: success()
+        run: |
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"✅ Deploy succeeded\",
+                \"description\": \"**countdown.nanobox.gg** is live\",
+                \"color\": 3066993,
+                \"fields\": [
+                  {\"name\": \"Commit\", \"value\": \"\`${SHORT_SHA}\`  ${{ github.event.head_commit.message }}\", \"inline\": false},
+                  {\"name\": \"Triggered by\", \"value\": \"${{ github.actor }}\", \"inline\": true},
+                  {\"name\": \"Branch\", \"value\": \"${{ github.ref_name }}\", \"inline\": true}
+                ],
+                \"footer\": {\"text\": \"HomelabCountdown CI/CD\"}
+              }]
+            }"
+
+      # ── 8. Discord failure notification ───────────────────────────────────
+      - name: Notify Discord — failure
+        if: failure()
+        run: |
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"❌ Deploy failed\",
+                \"description\": \"Check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.\",
+                \"color\": 15158332,
+                \"fields\": [
+                  {\"name\": \"Commit\", \"value\": \"\`${SHORT_SHA}\`  ${{ github.event.head_commit.message }}\", \"inline\": false},
+                  {\"name\": \"Triggered by\", \"value\": \"${{ github.actor }}\", \"inline\": true}
+                ],
+                \"footer\": {\"text\": \"HomelabCountdown CI/CD\"}
+              }]
+            }"
