@@ -35,6 +35,15 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         o.ClientSecret = builder.Configuration["Google:ClientSecret"] ?? throw new InvalidOperationException("Google:ClientSecret not configured");
         o.CallbackPath = "/auth/google/callback";
 
+        // Force https redirect URI regardless of what the reverse proxy forwards
+        o.Events.OnRedirectToAuthorizationEndpoint = ctx =>
+        {
+            var uri = new Uri(ctx.RedirectUri);
+            var fixed_uri = new UriBuilder(uri) { Scheme = "https", Port = -1 }.Uri.ToString();
+            ctx.Response.Redirect(fixed_uri);
+            return Task.CompletedTask;
+        };
+
         o.Events.OnCreatingTicket = async ctx =>
         {
             var email = ctx.Principal?.FindFirstValue(ClaimTypes.Email) ?? "";
