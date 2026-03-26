@@ -1,8 +1,21 @@
 # HomelabCountdown
 
-A creative Blazor Server countdown to **August 5th, 2026** — running on a Proxmox LXC behind nginx + Cloudflare Tunnel.
+A creative Blazor Server countdown to **August 5th, 2026** — running on a Proxmox LXC behind Cloudflare Tunnel.
 
-Every day the app finds a world holiday, commissions a bespoke SVG art piece from Claude, and uses it as a full-screen background. The countdown card, progress bar, and accent colors all adapt to that day's theme.
+Every day the app finds a real world holiday, commissions a bespoke **Bob Ross-style animated SVG painting** from Claude, and uses it as a full-screen living background. Trees sway, water shimmers, clouds drift. The countdown card, progress bar colors, and weather overlay all adapt to that day's theme.
+
+---
+
+## Features
+
+- **Daily AI art** — Claude (`claude-sonnet-4-6`) generates an oil-painting-style animated SVG each day themed around a real holiday from [timeanddate.com](https://www.timeanddate.com/holidays/us/)
+- **Living animations** — every SVG element is animated: trees sway, grass waves, water shimmers, clouds drift, birds glide
+- **Weather overlay** — Claude picks a weather effect (rain, snow, aurora, wind, etc.) tied to a real-world weather fact; particles animate over the art
+- **Viewer tracking sidebar** — real-time geolocation of visitors (country flags, US state flags + abbreviations, visit counts) stored in SQLite
+- **Art gallery** — `/gallery` shows all past days with view counts; click any card to open a detail modal or view the full day's page
+- **Historical day view** — `/?date=YYYY-MM-DD` replays any past day exactly: art, weather, progress state, and viewer counts as they were
+- **Discord notifications** — deploy started/succeeded/failed events + daily art embeds posted to a webhook
+- **Self-hosted CI/CD** — GitHub Actions runner inside the LXC; push to `master` → build → publish → swap → health check
 
 ---
 
@@ -10,25 +23,29 @@ Every day the app finds a world holiday, commissions a bespoke SVG art piece fro
 
 ```
 HomelabCountdown/
-├── Components/
-│   ├── App.razor               # HTML shell, MudBlazor CSS/JS
-│   ├── Layout/MainLayout.razor # MudBlazor theme provider (no sidebar)
-│   └── Pages/
-│       ├── Home.razor          # Countdown + art background
-│       └── Gallery.razor       # Grid of all past daily art pieces
+├── Components/Pages/
+│   ├── Home.razor          # Countdown + art bg + weather + viewer sidebar
+│   │                       # Accepts ?date=YYYY-MM-DD for historical replay
+│   └── Gallery.razor       # Grid of all past art + modal + view counts
 ├── Models/
-│   ├── DailyArt.cs             # Metadata model (serialised to JSON cache)
-│   └── HolidayInfo.cs          # Holiday DTO
+│   ├── DailyArt.cs         # Art metadata (serialised to JSON per day)
+│   ├── HolidayInfo.cs      # Holiday DTO
+│   ├── ViewerEntry.cs      # Geo visitor entry (key, country, state, count)
+│   └── WeatherEffect.cs    # Weather type, color, date
 ├── Services/
-│   ├── HolidayService.cs       # Nager.Date — finds today's world holiday
-│   ├── ArtCacheService.cs      # Read/write art to /var/lib/homecountdown/art-cache/ (persistent)
-│   ├── PlaywrightScreenshotService.cs  # Renders SVG → PNG via headless Chromium
-│   ├── ArtGenerationService.cs # Agentic loop: generate → screenshot → score → refine
-│   ├── DailyArtHostedService.cs        # BackgroundService: runs on startup + daily at midnight
-│   └── DiscordNotificationService.cs  # Posts art + deploy events to Discord webhook
-├── wwwroot/
-│   └── app.css                 # All custom styles (dark, glassmorphism)
-└── Program.cs                  # DI, MudBlazor, persistent art-cache static files
+│   ├── TimeAndDateHolidayService.cs  # Scrapes timeanddate.com once/year, scores & picks best holiday
+│   ├── HolidayService.cs             # Seasonal/astronomical fallback (solstices, moon names, seasons)
+│   ├── ArtCacheService.cs            # Read/write SVG+PNG+JSON to art-cache dir (persistent)
+│   ├── ArtGenerationService.cs       # Agentic loop: generate → screenshot → score → refine (≤3 attempts)
+│   ├── DailyArtHostedService.cs      # BackgroundService: fires on startup + daily at midnight
+│   ├── WeatherService.cs             # Claude picks weather effect per day
+│   ├── GeoLocationService.cs         # ip-api.com geolocation with in-memory cache
+│   ├── ViewerDbService.cs            # SQLite: upsert visits, query by date
+│   ├── ViewerTrackingService.cs      # Orchestrates geo + DB + in-memory cache + SignalR event
+│   ├── PlaywrightScreenshotService.cs # Renders SVG → 900×600 PNG via headless Chromium
+│   └── DiscordNotificationService.cs  # Posts art + CI/CD events to Discord webhook
+├── wwwroot/app.css          # All custom styles: dark glass, progress bar heat waves, sparks, sidebar
+└── Program.cs               # DI, tracking middleware, persistent art-cache static files
 ```
 
 ---
@@ -36,18 +53,39 @@ HomelabCountdown/
 ## Agentic Art Loop
 
 ```
-DailyArtHostedService (startup + midnight)
+DailyArtHostedService  (startup + daily midnight)
+  └─► TimeAndDateHolidayService  →  picks best scored holiday from timeanddate.com
+        (fallback: HolidayService seasonal/astronomical context)
   └─► ArtGenerationService.GenerateAndCacheAsync(date, holiday)
-        ├─ [1–3 attempts]
-        │   ├─ Claude claude-sonnet-4-6: generate SVG (system prompt + holiday context + prior critique)
-        │   ├─ PlaywrightScreenshotService: render SVG → 900×600 PNG
-        │   └─ Claude claude-sonnet-4-6 vision: score screenshot (JSON: score, critique, palette)
-        └─ Cache winner → /var/lib/homecountdown/art-cache/{date}.{svg,png,json}
-           ├─ ArtCacheService.OnArtGenerated fires → Home.razor updates via SignalR
-           └─ DiscordNotificationService → posts embed to Discord webhook
+        ├─ [1–3 attempts, max_tokens=12000, HttpClient timeout=10min]
+        │   ├─ Claude: generate Bob Ross-style animated SVG
+        │   │          (dreamy sky, mountain silhouettes, happy little trees,
+        │   │           reflective water, god-rays, per-element keyframe animations)
+        │   ├─ Claude: code-review SVG (checks animations, viewBox, no JS)
+        │   ├─ Playwright: render SVG → 900×600 PNG
+        │   └─ Claude vision: score PNG (0–10) + critique + palette extraction
+        └─ Pass threshold ≥ 8.0 → cache winner, else keep best after 3 attempts
+           ├─ Files: art-cache/{date}.svg, .png, .json + weather-{date}.json
+           ├─ ArtCacheService.OnArtGenerated → Home.razor live update via SignalR
+           └─ DiscordNotificationService → embed with screenshot
+
+  └─► WeatherService  →  Claude picks weather effect + real-world weather fact
 ```
 
-Pass threshold: **score ≥ 8/10**. If max attempts (3) reached, keeps the best result regardless.
+---
+
+## Holiday Scoring
+
+Holidays from timeanddate.com are ranked by category:
+
+| Score | Categories |
+|---|---|
+| 5 | Religious observances |
+| 4 | Independence days, national holidays, seasonal/astronomical events |
+| 3 | Nature, cultural, traditional |
+| 1 | Awareness days |
+
+Astronomical/seasonal fallback (when no holiday found): solstices, equinoxes, named moon phases, season labels.
 
 ---
 
@@ -55,39 +93,37 @@ Pass threshold: **score ≥ 8/10**. If max attempts (3) reached, keeps the best 
 
 | Layer | Technology |
 |---|---|
-| Framework | .NET 9, Blazor Server (Interactive Server render mode) |
-| UI | MudBlazor 9 |
-| Holidays | Nager.Date 2.x (offline, no API key) |
-| AI | Anthropic.SDK 5 → `claude-sonnet-4-6` |
-| Screenshots | Microsoft.Playwright 1.x → headless Chromium |
-| Notifications | Discord webhooks (CI/CD events + daily art) |
-| Reverse proxy | nginx on LXC |
-| Tunnel | Cloudflare Tunnel (no port-forwarding) |
-| Version control | GitHub |
+| Framework | .NET 9, Blazor Server (InteractiveServer render mode) |
+| UI | MudBlazor 9, custom CSS |
+| Holidays | timeanddate.com (HTML scrape, cached per year) |
+| AI | Anthropic.SDK → `claude-sonnet-4-6` |
+| Screenshots | Microsoft.Playwright → headless Chromium |
+| Geolocation | ip-api.com (free, HTTP, cached in-memory) |
+| Database | SQLite via Microsoft.Data.Sqlite (visitor counts) |
+| Flags | flagcdn.com (country + US state subdivision flags) |
+| Notifications | Discord webhooks |
+| CI/CD | GitHub Actions (self-hosted runner on LXC 503) |
+| Infra | Proxmox LXC, Cloudflare Tunnel |
 
 ---
 
 ## Configuration
 
-Set your Anthropic API key — **never commit it**:
+All secrets are written to `/etc/homecountdown.env` by the CI/CD pipeline. For local dev:
 
-### Option A — environment variable (recommended for production)
 ```bash
+# Option A — environment variables
 export ANTHROPIC_API_KEY=sk-ant-...
-```
+export DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+export ArtCache__Path=/path/to/art-cache
 
-### Option B — .NET User Secrets (development)
-```bash
-cd HomelabCountdown
+# Option B — .NET User Secrets
 dotnet user-secrets set "Anthropic:ApiKey" "sk-ant-..."
 ```
 
-### Option C — `appsettings.json` (not recommended)
-Set `Anthropic.ApiKey` in the file — but **do not commit** the key.
-
 ---
 
-## Running locally
+## Running Locally
 
 ```bash
 # 1. Install Playwright browsers (first run only)
@@ -99,50 +135,42 @@ export ANTHROPIC_API_KEY=sk-ant-...
 
 # 3. Run
 dotnet run
-# → https://localhost:5001
+# → http://localhost:5000
 ```
 
 ---
 
 ## Proxmox LXC Deployment
 
-### 1. Create LXC (Debian 12 recommended)
+The app deploys automatically via GitHub Actions on every push to `master`. A self-hosted runner lives inside LXC 503.
 
-In Proxmox UI: create unprivileged LXC, 2 CPU, 2 GB RAM, 10 GB disk.
+### CI/CD Pipeline (`.github/workflows/deploy.yml`)
 
-### 2. Install .NET 9 runtime
-
-```bash
-wget https://dot.net/v1/dotnet-install.sh
-bash dotnet-install.sh --runtime aspnetcore --version 9.0
-echo 'export PATH=$PATH:$HOME/.dotnet' >> ~/.bashrc && source ~/.bashrc
+```
+push to master
+  → Discord "deploy started" embed
+  → checkout + dotnet restore + dotnet build
+  → dotnet publish → /opt/homecountdown/next
+  → write secrets to /etc/homecountdown.env
+  → systemctl stop → swap next→current → systemctl start
+  → health check (curl localhost:5000, 12 attempts × 5s)
+  → Discord success/failure embed with service logs
 ```
 
-### 3. Install Playwright system deps
+### Persistent storage
 
-```bash
-apt-get update && apt-get install -y \
-  libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libgbm1 \
-  libxcomposite1 libxdamage1 libxrandr2 libpango-1.0-0 libasound2 \
-  libxshmfence1 libxfixes3 fonts-liberation libdbus-1-3
+Art files survive deploys — only `/opt/homecountdown/current` is swapped:
+
+```
+/var/lib/homecountdown/art-cache/
+  ├── 2026-03-25.svg          # Animated SVG (source of truth)
+  ├── 2026-03-25.png          # 900×600 screenshot (for gallery + video)
+  ├── 2026-03-25.json         # Metadata (holiday, score, colors, critique)
+  ├── weather-2026-03-25.json # Weather effect for the day
+  └── countdown.db            # SQLite — visitor geo counts by date
 ```
 
-### 4. Publish and deploy
-
-```bash
-# On dev machine
-dotnet publish -c Release -o ./publish
-
-# Copy to LXC
-rsync -av ./publish/ root@<LXC_IP>:/opt/homecountdown/
-
-# On LXC — install browsers
-cd /opt/homecountdown
-ASPNETCORE_ENVIRONMENT=Production ./HomelabCountdown &
-# First run auto-installs Chromium via Playwright
-```
-
-### 5. systemd service
+### systemd service
 
 ```ini
 # /etc/systemd/system/homecountdown.service
@@ -151,81 +179,16 @@ Description=HomelabCountdown Blazor App
 After=network.target
 
 [Service]
-WorkingDirectory=/opt/homecountdown
-ExecStart=/opt/homecountdown/HomelabCountdown
+WorkingDirectory=/opt/homecountdown/current
+ExecStart=/opt/homecountdown/current/HomelabCountdown
 Restart=always
-Environment=ASPNETCORE_ENVIRONMENT=Production
-Environment=ANTHROPIC_API_KEY=sk-ant-...
-Environment=ASPNETCORE_URLS=http://0.0.0.0:5000
+EnvironmentFile=/etc/homecountdown.env
+User=runner
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-```bash
-systemctl enable --now homecountdown
-```
+### Viewer tracking middleware
 
-### 6. nginx reverse proxy
-
-```nginx
-# /etc/nginx/sites-available/homecountdown
-server {
-    listen 80;
-    server_name countdown.yourdomain.com;
-
-    location / {
-        proxy_pass         http://127.0.0.1:5000;
-        proxy_http_version 1.1;
-        proxy_set_header   Upgrade $http_upgrade;
-        proxy_set_header   Connection "upgrade";
-        proxy_set_header   Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-```bash
-ln -s /etc/nginx/sites-available/homecountdown /etc/nginx/sites-enabled/
-nginx -t && systemctl reload nginx
-```
-
-### 7. Cloudflare Tunnel
-
-```bash
-# Install cloudflared on LXC
-curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
-  -o /usr/local/bin/cloudflared && chmod +x /usr/local/bin/cloudflared
-
-cloudflared tunnel login
-cloudflared tunnel create homecountdown
-cloudflared tunnel route dns homecountdown countdown.yourdomain.com
-
-# Config: ~/.cloudflared/config.yml
-# tunnel: <tunnel-id>
-# credentials-file: /root/.cloudflared/<tunnel-id>.json
-# ingress:
-#   - hostname: countdown.yourdomain.com
-#     service: http://localhost:80
-#   - service: http_status:404
-
-cloudflared service install
-systemctl enable --now cloudflared
-```
-
----
-
-## Commit History (feature-by-feature)
-
-| # | Commit | Contents |
-|---|---|---|
-| 1 | `scaffold: Blazor Server + MudBlazor + packages` | dotnet new, NuGet adds |
-| 2 | `feat: models and holiday service` | DailyArt, HolidayInfo, HolidayService |
-| 3 | `feat: art cache service` | ArtCacheService, wwwroot/art-cache dir |
-| 4 | `feat: Playwright screenshot service` | PlaywrightScreenshotService |
-| 5 | `feat: agentic art generation loop` | ArtGenerationService, DailyArtHostedService |
-| 6 | `feat: home page countdown UI` | Home.razor, full-screen art background |
-| 7 | `feat: gallery page` | Gallery.razor |
-| 8 | `feat: WindowSwap proxy` | /api/windowswap endpoint |
-| 9 | `style: dark glassmorphism CSS` | app.css |
-| 10 | `docs: README + deployment guide` | README.md |
+Fires on every real browser `GET /` request (skips bots/API calls by checking `Accept: text/html`). Reads client IP from `CF-Connecting-IP` (Cloudflare) → `X-Forwarded-For` → socket. Geo-lookup via ip-api.com, upserted into SQLite, reflected live in the sidebar via SignalR.
