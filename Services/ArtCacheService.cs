@@ -63,7 +63,12 @@ public class ArtCacheService
         var meta = GetArtForDate(date);
         if (meta is null) return null;
         var path = Path.Combine(_cacheDir, meta.SvgFileName);
-        return File.Exists(path) ? File.ReadAllText(path) : null;
+        if (!File.Exists(path)) return null;
+        var svg = File.ReadAllText(path);
+        // Ensure SVG fills the container on all screen sizes (no letterboxing)
+        if (!svg.Contains("preserveAspectRatio", StringComparison.OrdinalIgnoreCase))
+            svg = svg.Replace("<svg", "<svg preserveAspectRatio=\"xMidYMid slice\"", StringComparison.OrdinalIgnoreCase);
+        return svg;
     }
 
     public List<DailyArt> GetAllCachedArt()

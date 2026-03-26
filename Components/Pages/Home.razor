@@ -59,17 +59,8 @@
     else
     {
         <div class="countdown-card">
-            <!-- Holiday banner -->
-            <div class="holiday-banner" style="border-color: @(_art.AccentColor)55; background: @(_art.PrimaryColor)18;">
-                <span class="holiday-banner-flag">@GetFlag(_art.CountryCode)</span>
-                <div class="holiday-banner-text">
-                    <div class="holiday-banner-name" style="color: @_art.AccentColor;">@_art.HolidayName</div>
-                    <div class="holiday-banner-country">@_art.CountryName · @_art.Date.ToString("MMMM d")</div>
-                </div>
-            </div>
-
             <!-- Days number -->
-            <div class="days-number" style="color: @_art.AccentColor; text-shadow: 0 0 40px @(_art.AccentColor)88;">
+            <div class="days-number" style="color: @_art.AccentColor; text-shadow: 0 2px 20px rgba(0,0,0,0.9), 0 0 60px @(_art.AccentColor)88;">
                 @_daysRemaining
             </div>
             <div class="days-label">days until August 5th</div>
@@ -204,9 +195,6 @@
     private string ArtBgStyle => _art is null
         ? "background: linear-gradient(135deg, #0f0f1a 0%, #1a1a3e 100%);"
         : "";
-
-    private static string GetFlag(string countryCode) => countryCode.Length != 2 ? "🌍" :
-        string.Concat(countryCode.ToUpperInvariant().Select(c => char.ConvertFromUtf32(c + 0x1F1A5)));
 
     private static string WeatherIcon(string type) => type switch
     {
