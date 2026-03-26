@@ -78,18 +78,17 @@ html, body {
     100% { transform: scale(1.5) translateY(-20px); opacity: 0.1; }
 }
 
-/* Wind */
+/* Wind — subtle vertical shimmer, no horizontal sweep */
 .weather-wind .weather-particle {
-    background: linear-gradient(90deg, transparent, rgba(200,220,255,0.4), transparent);
-    border-radius: 2px;
-    height: 1px !important;
-    animation: wind-streak linear infinite;
+    background: radial-gradient(ellipse, rgba(200,220,255,0.15), transparent 70%);
+    border-radius: 50%;
+    width: 80px !important;
+    height: 80px !important;
+    animation: wind-sway ease-in-out infinite alternate;
 }
-@keyframes wind-streak {
-    0%   { transform: translateX(-200px); opacity: 0; }
-    20%  { opacity: 0.6; }
-    80%  { opacity: 0.4; }
-    100% { transform: translateX(110vw); opacity: 0; }
+@keyframes wind-sway {
+    0%   { transform: translateX(-15px) translateY(0); opacity: 0.1; }
+    100% { transform: translateX(15px) translateY(-20px); opacity: 0.35; }
 }
 
 /* Fog */
@@ -133,28 +132,26 @@ html, body {
     93%, 95% { opacity: 1; }
 }
 
-/* Cloud */
+/* Cloud — stationary soft blooms, no horizontal sweep */
 .weather-cloud .weather-particle {
-    background: radial-gradient(ellipse, rgba(255,255,255,0.12), transparent 70%);
-    width: 120px !important;
-    height: 50px !important;
+    background: radial-gradient(ellipse, rgba(255,255,255,0.07), transparent 70%);
+    width: 180px !important;
+    height: 100px !important;
     border-radius: 50%;
-    animation: cloud-drift linear infinite;
+    animation: cloud-pulse ease-in-out infinite alternate;
 }
-@keyframes cloud-drift {
-    0%   { transform: translateX(-150px); opacity: 0; }
-    10%  { opacity: 0.6; }
-    90%  { opacity: 0.4; }
-    100% { transform: translateX(110vw); opacity: 0; }
+@keyframes cloud-pulse {
+    0%   { opacity: 0.1; transform: scale(0.9); }
+    100% { opacity: 0.4; transform: scale(1.1); }
 }
 
 /* ── Weather info card ────────────────────────────────────────────────────── */
 .weather-card {
     position: fixed;
-    bottom: 2rem;
-    left: 2rem;
+    bottom: 1.5rem;
+    left: 1.5rem;
     z-index: 10;
-    max-width: 320px;
+    max-width: 300px;
     background: rgba(0,0,0,0.55);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255,255,255,0.1);
@@ -232,19 +229,17 @@ html, body {
     align-items: center;
     justify-content: center;
     pointer-events: none;
+    padding: 1rem;
 }
 
 .countdown-card {
     pointer-events: auto;
-    background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: transparent;
+    border: none;
     border-radius: 1.5rem;
-    padding: 2.5rem 3.5rem;
+    padding: 2rem clamp(1.25rem, 5vw, 3.5rem);
     text-align: center;
-    min-width: 380px;
-    max-width: 520px;
-    box-shadow: 0 25px 80px rgba(0,0,0,0.6);
+    width: min(92vw, 500px);
 }
 
 .loading-card {
@@ -253,39 +248,47 @@ html, body {
     align-items: center;
     gap: 1.5rem;
     padding: 3rem 4rem;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(16px);
+    border-radius: 1.5rem;
+    border: 1px solid rgba(255,255,255,0.1);
 }
 
 .loading-text {
     color: rgba(255,255,255,0.6);
     font-size: 0.95rem;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.8);
 }
 
 /* ── Days number ──────────────────────────────────────────────────────────── */
 .days-number {
-    font-size: clamp(5rem, 12vw, 8rem);
+    font-size: clamp(4.5rem, 20vw, 8rem);
     font-weight: 700;
     line-height: 1;
     letter-spacing: -0.03em;
     transition: color 1s ease;
+    text-shadow: 0 2px 20px rgba(0,0,0,0.9), 0 0 60px currentColor;
 }
 
 .days-label {
-    font-size: 1rem;
+    font-size: clamp(0.65rem, 2.5vw, 1rem);
     font-weight: 300;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.55);
+    color: rgba(255,255,255,0.85);
+    text-shadow: 0 1px 8px rgba(0,0,0,0.9);
     margin-top: 0.4rem;
-    margin-bottom: 1.8rem;
+    margin-bottom: 1.5rem;
 }
 
 /* ── Progress bar ─────────────────────────────────────────────────────────── */
 .progress-track {
-    height: 6px;
+    height: 4px;
     border-radius: 3px;
-    background: rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.2);
     overflow: hidden;
     margin-bottom: 0.5rem;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.6);
 }
 
 .progress-fill {
@@ -296,11 +299,12 @@ html, body {
 }
 
 .progress-label {
-    font-size: 0.75rem;
-    color: rgba(255,255,255,0.35);
+    font-size: clamp(0.65rem, 2vw, 0.75rem);
+    color: rgba(255,255,255,0.7);
+    text-shadow: 0 1px 6px rgba(0,0,0,0.9);
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    margin-bottom: 1.8rem;
+    margin-bottom: 1.5rem;
 }
 
 /* ── Holiday banner ───────────────────────────────────────────────────────── */
@@ -310,14 +314,16 @@ html, body {
     gap: 0.85rem;
     padding: 0.65rem 1rem;
     border-radius: 0.75rem;
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(0,0,0,0.35);
     margin-bottom: 1.5rem;
     text-align: left;
     transition: border-color 1s ease, background 1s ease;
+    backdrop-filter: blur(6px);
 }
 
 .holiday-banner-flag {
-    font-size: 2rem;
+    font-size: clamp(1.5rem, 5vw, 2rem);
     line-height: 1;
     flex-shrink: 0;
 }
@@ -326,18 +332,24 @@ html, body {
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
+    min-width: 0;
 }
 
 .holiday-banner-name {
-    font-size: 1.05rem;
+    font-size: clamp(0.9rem, 3vw, 1.05rem);
     font-weight: 600;
     letter-spacing: 0.01em;
     transition: color 1s ease;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .holiday-banner-country {
-    font-size: 0.78rem;
-    color: rgba(255,255,255,0.45);
+    font-size: clamp(0.68rem, 2vw, 0.78rem);
+    color: rgba(255,255,255,0.7);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
     letter-spacing: 0.04em;
     text-transform: uppercase;
 }
@@ -345,7 +357,8 @@ html, body {
 /* ── Art credit ───────────────────────────────────────────────────────────── */
 .art-credit {
     font-size: 0.72rem;
-    color: rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.5);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.9);
     letter-spacing: 0.05em;
     margin-top: 0.25rem;
 }
@@ -375,9 +388,14 @@ body:has(.gallery-page) {
     color: rgba(255,255,255,0.5);
     text-decoration: none;
     font-size: 0.9rem;
-    display: block;
+    display: inline-block;
     margin-bottom: 1rem;
     transition: color 0.2s;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-family: inherit;
 }
 .gallery-back:hover { color: #fff; }
 
@@ -567,4 +585,66 @@ body:has(.gallery-page) {
     font-style: italic;
     border-left: 2px solid rgba(255,255,255,0.12);
     padding-left: 0.75rem;
+}
+
+/* ── Mobile responsive ────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .topbar {
+        padding: 0.75rem 1rem;
+    }
+
+    .topbar-brand {
+        font-size: 0.85rem;
+    }
+
+    .countdown-card {
+        width: 96vw;
+        padding: 1.25rem 1rem;
+    }
+
+    .days-label {
+        letter-spacing: 0.1em;
+        margin-bottom: 1rem;
+    }
+
+    .progress-label {
+        margin-bottom: 1rem;
+    }
+
+    /* Weather card goes to bottom center on mobile, smaller */
+    .weather-card {
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 1rem;
+        max-width: calc(100vw - 2rem);
+        width: max-content;
+    }
+
+    .weather-card-desc {
+        font-size: 0.72rem;
+    }
+
+    /* Gallery */
+    .gallery-page {
+        padding: 1rem;
+    }
+
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .gallery-modal-backdrop {
+        padding: 0.75rem;
+        align-items: flex-end;
+    }
+
+    .gallery-modal {
+        border-radius: 1.25rem 1.25rem 0 0;
+        max-height: 85vh;
+    }
+
+    .gallery-modal-body {
+        padding: 1rem 1.25rem 1.5rem;
+    }
 }
