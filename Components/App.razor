@@ -27,6 +27,22 @@
 
 <body>
     <Routes />
+
+    <!-- Blazor reconnect modal — styled to match dark theme -->
+    <div id="components-reconnect-modal">
+        <div class="reconnect-content">
+            <div class="reconnect-icon">⟳</div>
+            <p class="reconnect-msg reconnect-show-msg">Reconnecting…</p>
+            <p class="reconnect-msg reconnect-failed-msg">
+                Connection lost.
+                <a href="" onclick="window.Blazor.reconnect()">Try again</a>
+            </p>
+            <p class="reconnect-msg reconnect-rejected-msg">
+                Session expired. <a href="">Reload</a>
+            </p>
+        </div>
+    </div>
+
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
 </body>

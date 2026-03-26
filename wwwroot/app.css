@@ -206,7 +206,7 @@ body::before {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
-    animation: rise-up 0.6s 0.4s var(--spring) both;
+    animation: rise-up 0.5s ease both;
 }
 
 .weather-card-icon { font-size: 1.4rem; line-height: 1; }
@@ -237,7 +237,7 @@ body::before {
     backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(255,255,255,0.07);
     transition: border-bottom-color 1.5s ease;
-    animation: slide-down 0.6s var(--spring) both;
+    animation: slide-down 0.5s ease both;
 }
 
 .topbar-brand {
@@ -301,7 +301,7 @@ body::before {
     padding: 2rem clamp(1.25rem, 5vw, 3.5rem);
     text-align: center;
     width: min(92vw, 500px);
-    animation: scale-in 0.7s 0.1s var(--spring) both;
+    animation: scale-in 0.5s ease both;
 }
 
 /* ── Days number ──────────────────────────────────────────────────────────── */
@@ -485,7 +485,7 @@ body::before {
     display: flex;
     flex-direction: column;
     gap: 0;
-    animation: rise-up 0.6s 0.5s var(--spring) both;
+    animation: rise-up 0.5s ease both;
 }
 
 .viewer-header {
@@ -907,4 +907,82 @@ body:has(.gallery-page) {
     .gallery-modal-body {
         padding: 1rem 1.25rem 1.5rem;
     }
+}
+
+/* ── Blazor reconnect modal ───────────────────────────────────────────────── */
+#components-reconnect-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px);
+}
+
+#components-reconnect-modal.components-reconnect-show,
+#components-reconnect-modal.components-reconnect-failed,
+#components-reconnect-modal.components-reconnect-rejected {
+    display: flex;
+}
+
+.reconnect-content {
+    background: rgba(15, 15, 30, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 2rem 2.5rem;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.75);
+    max-width: 320px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+}
+
+.reconnect-icon {
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.5;
+}
+
+#components-reconnect-modal.components-reconnect-show .reconnect-icon {
+    animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.reconnect-msg {
+    display: none;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+#components-reconnect-modal.components-reconnect-show    .reconnect-show-msg     { display: block; }
+#components-reconnect-modal.components-reconnect-failed  .reconnect-failed-msg   { display: block; }
+#components-reconnect-modal.components-reconnect-rejected .reconnect-rejected-msg { display: block; }
+
+.reconnect-content a {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: underline;
+    cursor: pointer;
+}
+.reconnect-content a:hover { color: #fff; }
+
+/* ── Blazor error bar ─────────────────────────────────────────────────────── */
+#blazor-error-ui {
+    color-scheme: dark;
+    background: rgba(15, 15, 30, 0.95);
+    border-top: 1px solid rgba(255, 80, 80, 0.35);
+    color: rgba(255, 255, 255, 0.7);
+    bottom: 0;
+    box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.5);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.65rem 1.5rem;
+    position: fixed;
+    width: 100%;
+    z-index: 9998;
+    font-size: 0.85rem;
 }
