@@ -328,26 +328,27 @@ body::before {
 .progress-fill {
     height: 100%;
     border-radius: 3px;
-    background: rgba(255,255,255,0.55);
     transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1),
-                background 1.2s ease;
+                background-color 1.2s ease;
 }
 
-/* ── Burning tip — same height as bar, glows at the edge ─────────────────── */
+/* ── Burning tip — a 3px cap right at the fill's right edge ──────────────── */
 .progress-tip {
     position: absolute;
-    left: calc(var(--pct, 50) * 1% - 4px);
-    top: -1px;           /* sits flush with 5px bar, 1px bleed top+bottom */
-    width: 8px;
-    height: 7px;
-    border-radius: 2px;
+    /* right edge of fill is at pct%; shift left by 1.5px to centre the 3px cap */
+    left: calc(var(--pct, 50) * 1% - 1px);
+    top: 0;
+    width: 3px;
+    height: 5px;      /* exact bar height */
+    border-radius: 0 2px 2px 0;
     pointer-events: none;
-    background: linear-gradient(90deg, #ffaa00, #ffffff);
+    background: #ffffff;
+    /* glow bleeds outward — no visible shape, just heat radiating from bar edge */
     box-shadow:
-        0 0 3px  2px #ffffff,
-        0 0 8px  4px #ffcc00,
-        0 0 14px 6px #ff6600,
-        0 0 22px 8px #ff220044;
+        0 0 4px  3px #ffffff,
+        0 0 10px 5px #ffdd00,
+        0 0 18px 8px #ff6600,
+        0 0 26px 10px #ff220044;
     animation: tip-pulse 0.32s ease-in-out infinite alternate;
     z-index: 2;
 }
@@ -355,40 +356,42 @@ body::before {
 @keyframes tip-pulse {
     from {
         box-shadow:
-            0 0 3px  2px #ffffff,
-            0 0 8px  4px #ffcc00,
-            0 0 14px 6px #ff6600,
-            0 0 22px 8px #ff220044;
+            0 0 4px  3px #ffffff,
+            0 0 10px 5px #ffdd00,
+            0 0 18px 8px #ff6600,
+            0 0 26px 10px #ff220044;
     }
     to {
         box-shadow:
-            0 0 5px  3px #ffffff,
-            0 0 12px 5px #ffee00,
-            0 0 20px 9px #ff8800,
-            0 0 30px 12px #ff440066;
+            0 0 6px  4px #ffffff,
+            0 0 14px 6px #ffee44,
+            0 0 24px 11px #ff8800,
+            0 0 36px 14px #ff440066;
     }
 }
 
-/* ── Sparks ───────────────────────────────────────────────────────────────── */
+/* ── Sparks — elongated streaks shooting out from the tip ────────────────── */
 .progress-spark {
     position: absolute;
-    left: calc(var(--pct, 50) * 1% + var(--ox, 0px));
+    left: calc(var(--pct, 50) * 1%);
     top: 2px;
-    width:  var(--sz, 4px);
-    height: var(--sz, 4px);
+    width:  var(--w, 3px);
+    height: var(--h, 10px);
     border-radius: 50%;
-    background: var(--col, #ffcc44);
-    box-shadow: 0 0 5px 2px var(--col, #ff8800);
+    background: radial-gradient(ellipse at top, #ffffff 0%, var(--col, #ffcc44) 60%, transparent 100%);
+    box-shadow: 0 0 4px 2px var(--col, #ff8800), 0 0 8px 3px #ff660055;
     pointer-events: none;
     opacity: 0;
-    animation: spark-fall var(--dur, 700ms) var(--delay, 0ms) ease-in infinite;
+    /* rotate each spark in the direction it's flying */
+    transform-origin: center top;
+    animation: spark-shoot var(--dur, 600ms) var(--delay, 0ms) ease-out infinite;
 }
 
-@keyframes spark-fall {
-    0%   { transform: translate(0, 0);                                              opacity: 1;   }
-    15%  { transform: translate(calc(var(--dx) * 0.2), calc(var(--rise) * -1px));  opacity: 1;   }
-    60%  { opacity: 0.8; }
-    100% { transform: translate(var(--dx), 32px);                                   opacity: 0;   }
+@keyframes spark-shoot {
+    0%   { transform: translate(0, 0) rotate(0deg) scaleY(1);  opacity: 1; }
+    40%  { opacity: 1; }
+    70%  { opacity: 0.6; }
+    100% { transform: translate(var(--dx), var(--dy)) rotate(8deg) scaleY(0.4); opacity: 0; }
 }
 
 .progress-label {

@@ -249,17 +249,16 @@
 
     private static string SparkStyle(int i)
     {
-        var rng = new Random(i * 17 + 3);
-        var delay    = rng.Next(0, 2200);
-        var duration = rng.Next(450, 1100);
-        var offsetX  = rng.Next(-4, 5);       // spawn scatter around tip
-        var driftX   = rng.Next(-18, 19);     // horizontal drift while falling
-        var size     = rng.Next(3, 9);
-        var riseY    = rng.Next(0, 1) == 0 ? rng.Next(3, 10) : 0; // some sparks arc up first
-        // colour: white-hot → yellow → orange
-        var colours  = new[] { "#ffffff", "#fff4aa", "#ffcc44", "#ff9922", "#ff6600" };
+        var rng      = new Random(i * 17 + 3);
+        var delay    = rng.Next(0, 2000);
+        var duration = rng.Next(350, 900);
+        var driftX   = rng.Next(-30, 31);       // wide sideways arc
+        var driftY   = rng.Next(-14, 28);       // mostly downward, some go up
+        var w        = rng.Next(2, 5);          // spark width
+        var h        = rng.Next(5, 16);         // elongated — looks like a streak
+        var colours  = new[] { "#ffffff", "#fffacc", "#ffee66", "#ffcc22", "#ff9900" };
         var colour   = colours[rng.Next(colours.Length)];
-        return $"--delay:{delay}ms;--dur:{duration}ms;--ox:{offsetX}px;--dx:{driftX}px;--sz:{size}px;--rise:{riseY}px;--col:{colour};";
+        return $"--delay:{delay}ms;--dur:{duration}ms;--dx:{driftX}px;--dy:{driftY}px;--w:{w}px;--h:{h}px;--col:{colour};";
     }
 
     // flagcdn.com supports ISO 3166-2 subdivision codes for US states
@@ -280,9 +279,11 @@
         ? ""
         : $"background: {_art.PrimaryColor}22;";
 
+    // Heat overlay sits on top of the solid art color — transparent on the left,
+    // burning orange→white only on the rightmost ~30% near the tip.
     private string ProgressFillStyle => _art is null
-        ? "background: linear-gradient(90deg, rgba(255,255,255,0.25) 0%, rgba(255,180,0,0.7) 75%, #ffffff 100%);"
-        : $"background: linear-gradient(90deg, {_art.PrimaryColor} 0%, {_art.SecondaryColor} 55%, #ff8800 82%, #ffee44 93%, #ffffff 100%); box-shadow: 0 0 8px {_art.PrimaryColor}66;";
+        ? "background-color: rgba(255,255,255,0.35); background-image: linear-gradient(90deg, transparent 60%, rgba(255,130,0,0.65) 82%, rgba(255,220,80,0.95) 94%, #ffffff 100%);"
+        : $"background-color: {_art.PrimaryColor}; background-image: linear-gradient(90deg, transparent 55%, rgba(255,110,0,0.6) 80%, rgba(255,220,70,0.95) 93%, #ffffff 100%); box-shadow: 0 0 8px {_art.PrimaryColor}66;";
 
     private static string WeatherIcon(string type) => type switch
     {
