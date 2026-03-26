@@ -35,12 +35,25 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         o.ClientSecret = builder.Configuration["Google:ClientSecret"] ?? throw new InvalidOperationException("Google:ClientSecret not configured");
         o.CallbackPath = "/auth/google/callback";
 
-        // Force https redirect URI regardless of what the reverse proxy forwards
+        // Force https in the redirect_uri parameter sent to Google (app is behind Cloudflare)
         o.Events.OnRedirectToAuthorizationEndpoint = ctx =>
         {
-            var uri = new Uri(ctx.RedirectUri);
-            var fixed_uri = new UriBuilder(uri) { Scheme = "https", Port = -1 }.Uri.ToString();
-            ctx.Response.Redirect(fixed_uri);
+            var redirectUri = ctx.RedirectUri;
+            // Find and replace the redirect_uri query param value
+            var queryStart = redirectUri.IndexOf("redirect_uri=", StringComparison.Ordinal);
+            if (queryStart >= 0)
+            {
+                var valueStart = queryStart + "redirect_uri=".Length;
+                var valueEnd   = redirectUri.IndexOf('&', valueStart);
+                var encoded    = valueEnd < 0
+                    ? redirectUri[valueStart..]
+                    : redirectUri[valueStart..valueEnd];
+                var decoded  = Uri.UnescapeDataString(encoded);
+                var fixed_   = decoded.StartsWith("http://") ? "https://" + decoded[7..] : decoded;
+                var reEncoded = Uri.EscapeDataString(fixed_);
+                redirectUri = redirectUri[..valueStart] + reEncoded + (valueEnd < 0 ? "" : redirectUri[valueEnd..]);
+            }
+            ctx.Response.Redirect(redirectUri);
             return Task.CompletedTask;
         };
 
