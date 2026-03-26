@@ -24,7 +24,9 @@ builder.Services.AddSingleton(sp =>
                       ?? throw new InvalidOperationException(
                             "Anthropic API key not configured. " +
                             "Set Anthropic:ApiKey in appsettings or ANTHROPIC_API_KEY env var.");
-    return new AnthropicClient(new APIAuthentication(apiKey));
+    // SVG generation with 12k tokens can take several minutes — raise timeout to 10 min
+    var httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+    return new AnthropicClient(new APIAuthentication(apiKey), httpClient);
 });
 
 // ── App services ──────────────────────────────────────────────────────────────
