@@ -328,8 +328,33 @@ body::before {
 .progress-fill {
     height: 100%;
     border-radius: 3px;
+    position: relative;
+    overflow: hidden; /* clips heat waves to fill width */
     transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1),
                 background-color 1.2s ease;
+}
+
+/* ── Travelling heat wave — sweeps left→right inside the fill ─────────────── */
+.progress-heat {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    /* Blob shape: dim at leading edge, peaks in centre, fades trailing edge */
+    background: linear-gradient(90deg,
+        transparent          0%,
+        rgba(255, 90,  0,.20) 15%,
+        rgba(255,160, 40,.65) 42%,
+        rgba(255,230,120,.80) 55%,
+        rgba(255,160, 40,.50) 68%,
+        rgba(255, 90,  0,.15) 85%,
+        transparent          100%
+    );
+    animation: heat-sweep 2.2s ease-in-out infinite;
+}
+
+@keyframes heat-sweep {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
 }
 
 /* ── Burning tip — a 3px cap right at the fill's right edge ──────────────── */
