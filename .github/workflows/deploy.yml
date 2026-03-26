@@ -68,10 +68,18 @@ jobs:
       # ── 6. Health check ───────────────────────────────────────────────────
       - name: Health check
         run: |
-          sleep 8
-          curl --fail --silent --max-time 15 http://localhost:5000 \
-            && echo "✓ App is responding" \
-            || (echo "✗ Health check failed" && sudo journalctl -u homecountdown -n 30 && exit 1)
+          echo "Waiting for app to start..."
+          for i in {1..12}; do
+            if curl --fail --silent --max-time 5 http://localhost:5000 > /dev/null 2>&1; then
+              echo "✓ App is responding (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i: not ready yet, waiting 5s..."
+            sleep 5
+          done
+          echo "✗ Health check failed after 60s"
+          sudo journalctl -u homecountdown -n 30
+          exit 1
 
       # ── 7. Discord success notification ───────────────────────────────────
       - name: Notify Discord — success
