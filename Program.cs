@@ -5,6 +5,7 @@ using HomelabCountdown.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.HttpOverrides;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -93,7 +94,19 @@ builder.Services.AddSingleton<PhotoService>();
 builder.Services.AddScoped<WeatherService>();
 builder.Services.AddHostedService<DailyArtHostedService>();
 
+// ── Forwarded headers (Cloudflare Tunnel → nginx → app: trust X-Forwarded-Proto) ──
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+    // Trust all proxies — safe since we're behind Cloudflare Tunnel on a private LXC
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
+
+// ── Forwarded headers must be first so everything downstream sees correct scheme/host ──
+app.UseForwardedHeaders();
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 if (!app.Environment.IsDevelopment())
