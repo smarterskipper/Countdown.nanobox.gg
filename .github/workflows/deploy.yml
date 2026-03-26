@@ -103,12 +103,17 @@ jobs:
         run: |
           SHORT_SHA="${{ github.sha }}"
           SHORT_SHA="${SHORT_SHA:0:7}"
+          LOGS=$(sudo journalctl -u homecountdown -n 30 --no-pager 2>/dev/null \
+            | tail -15 \
+            | cut -c1-120 \
+            || echo "logs unavailable")
           PAYLOAD=$(jq -n \
             --arg sha "$SHORT_SHA" \
             --arg msg "${{ github.event.head_commit.message }}" \
             --arg actor "${{ github.actor }}" \
             --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            '{embeds:[{title:"❌ Deploy failed",description:("Check the [workflow logs]("+$run_url+") for details."),color:15158332,fields:[{name:"Commit",value:("`"+$sha+"`  "+$msg),inline:false},{name:"Triggered by",value:$actor,inline:true}],footer:{text:"HomelabCountdown CI/CD"}}]}')
+            --arg logs "$LOGS" \
+            '{embeds:[{title:"❌ Deploy failed",color:15158332,fields:[{name:"Commit",value:("`"+$sha+"`  "+$msg),inline:false},{name:"Triggered by",value:$actor,inline:true},{name:"Run",value:("[view logs]("+$run_url+")"),inline:true},{name:"Service logs",value:("```\n"+$logs+"\n```"),inline:false}],footer:{text:"HomelabCountdown CI/CD"}}]}')
           curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
