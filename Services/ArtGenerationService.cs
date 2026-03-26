@@ -131,15 +131,52 @@ public partial class ArtGenerationService
             FOREGROUND: Detailed symbolic objects, flora, or figures. A particle system of 10–20 small
               elements (petals, sparks, snowflakes, lanterns, stars, fireflies) scattered across canvas.
 
-            ═══ ANIMATION (mandatory — this is a living background) ═══
-            Include a <style> block with MINIMUM 6 distinct CSS @keyframes:
-              1. Sky/atmosphere slow shift — gradient color change or slow pan (20–40s)
-              2. Particle drift — staggered float+sway on the 10–20 small elements (4–10s, vary delay)
-              3. Focal element pulse — scale + glow breathing on the main cultural symbol (3–6s)
-              4. Secondary element movement — rotation, orbit, or wave on decorative shapes (6–15s)
-              5. Ambient light sweep — subtle brightness ripple or shadow sweep across scene (10–25s)
-              6. Text shimmer — color or opacity animation on the holiday name text (4–8s)
-            Use animation-iteration-count: infinite, ease-in-out. Apply via class names.
+            ═══ ANIMATION — EVERY ELEMENT MUST FEEL ALIVE ═══
+            This is a living painting. Every natural object gets its own animation.
+            Apply animations via CSS classes with staggered animation-delay on each element
+            so nothing moves in sync. All animations: infinite, ease-in-out.
+
+            REQUIRED keyframes (define ALL of these in the <style> block):
+
+            @keyframes sway — trees/plants rocking gently in wind
+              transform: rotate(-1.5deg) → rotate(1.5deg), transform-origin at base (50% 100%)
+              Duration: 3–5s per tree. Each tree gets a different animation-delay (0s, 0.4s, 0.9s…)
+
+            @keyframes grass-wave — grass blades rippling like a wave
+              transform: skewX(-4deg) scaleY(0.97) → skewX(4deg) scaleY(1.03)
+              transform-origin: bottom. Each blade/cluster offset by 0.1–0.3s delay.
+
+            @keyframes water-shimmer — horizontal shimmer bands on lakes/rivers
+              opacity: 0.3 → 0.7 → 0.3, subtle scaleX(1) → scaleX(1.02) → scaleX(1)
+              Duration: 2–4s. Multiple bands with different delays for ripple effect.
+
+            @keyframes cloud-drift — clouds slowly drifting across sky
+              transform: translateX(-8px) → translateX(8px). Duration: 18–30s.
+              Each cloud at a different speed and delay.
+
+            @keyframes flicker — fire, lanterns, stars, fireflies pulsing
+              opacity: 0.6 → 1.0 → 0.7 → 1.0. Duration: 0.8–2s. Rapid, organic.
+
+            @keyframes float — particles, petals, embers rising gently
+              transform: translateY(0) translateX(0) → translateY(-15px) translateX(5px)
+              opacity fade in/out. Duration: 4–8s.
+
+            @keyframes sun-pulse — sun/moon breathing with a soft glow
+              filter: blur(2px) brightness(1) → blur(4px) brightness(1.15). Duration: 4–6s.
+
+            @keyframes bird-glide — birds or leaves arcing across sky (optional)
+              transform: translateX(-60px) translateY(0) → translateX(60px) translateY(-10px)
+              Duration: 8–14s.
+
+            IMPLEMENTATION RULES:
+            - Every tree element: class="tree" + inline style="animation-delay: Xs"
+            - Every grass element: class="grass" + unique delay
+            - Every water band: class="shimmer" + unique delay
+            - Every cloud: class="cloud" + unique delay and duration via inline style
+            - Particles/petals/embers: class="float" + unique delay
+            - Stars/fireflies: class="flicker" + unique delay
+            - Apply transform-origin correctly so trees sway from their base, not center
+            - Use 0.5–1.5deg rotation for subtle realism; avoid large rotations that look mechanical
 
             ═══ VISUAL STYLE — BOB ROSS OIL PAINTING ═══
             This must look like a Bob Ross "Joy of Painting" landscape — loose, expressive,
@@ -189,7 +226,7 @@ public partial class ArtGenerationService
         {
             Messages = messages,
             Model = AnthropicModels.Claude46Sonnet,
-            MaxTokens = 8000,
+            MaxTokens = 12000,
             Stream = false,
             Temperature = 1.0m
         };
@@ -257,13 +294,15 @@ public partial class ArtGenerationService
 
             REQUIRED checks (all must pass):
             1. Has <svg with viewBox="0 0 900 600", width="100%", height="100%"
-            2. Has a <style> block with at least 3 distinct @keyframes defined
+            2. Has a <style> block with at least 6 distinct @keyframes defined
             3. Every @keyframes name referenced in animation: properties actually exists in the <style> block
-            4. Every class name used in animation: actually appears on at least one SVG element (e.g. class="pulse")
+            4. Every class name used in animation: actually appears on at least one SVG element (e.g. class="sway")
             5. SVG <filter> elements: if present, all result= attributes referenced in later filter primitives exist
             6. Gradient IDs referenced in fill="url(#...)" or stroke="url(#...)" are defined in <defs>
             7. Contains ARTMETA comment with valid JSON before </svg>
             8. Has meaningful layered content — not just a plain gradient rect (must have shapes/paths/text/symbols)
+            9. Individual natural elements (trees, grass, clouds, water) each have animation classes applied,
+               not just one global animation — check that multiple elements have class= attributes with animation
 
             If any check fails, set pass=false and list the specific failing checks in critical_issues.
             Respond ONLY with valid JSON on one line, fields: pass, critical_issues, suggestions, animation_count
