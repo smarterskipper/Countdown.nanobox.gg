@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @inject ArtCacheService ArtCache
 @inject ViewerDbService ViewerDb
+@inject PhotoService Photos
 
 <PageTitle>Art Gallery · Countdown to August 5th</PageTitle>
 
@@ -29,12 +30,17 @@
             @foreach (var art in _allArt)
             {
                 var views = _viewsByDate.GetValueOrDefault(art.Date, 0);
+                var photoCount = _photoCountsByDate.GetValueOrDefault(art.Date, 0);
                 <div class="gallery-card @(_selected == art ? "gallery-card--active" : "")"
                      @onclick="() => SelectArt(art)"
                      style="--primary: @art.PrimaryColor; --accent: @art.AccentColor;">
                     <div class="gallery-card-img">
                         <img src="@art.ScreenshotUrl" alt="@art.HolidayName (@art.CountryName)"
                              loading="lazy" />
+                        @if (photoCount > 0)
+                        {
+                            <span class="gallery-card-photo-badge">📷 @photoCount</span>
+                        }
                     </div>
                     <div class="gallery-card-info">
                         <div class="gallery-card-date">@art.Date.ToString("MMM d, yyyy")</div>
@@ -89,6 +95,37 @@
                     {
                         <p class="gallery-modal-critique">Claude's notes: "@_selected.FinalCritique"</p>
                     }
+
+                    <!-- ── Personal photos scrapbook ── -->
+                    <div class="gallery-photos-section">
+                        <div class="gallery-photos-header">
+                            <span class="gallery-photos-title">📷 Memories</span>
+                            <label class="gallery-upload-btn @(_uploading ? "gallery-upload-btn--loading" : "")">
+                                @(_uploading ? "Uploading…" : "+ Add photo")
+                                <InputFile OnChange="HandlePhotoUpload" accept="image/*" multiple disabled="@_uploading" style="display:none" />
+                            </label>
+                        </div>
+                        @if (_modalPhotos.Count > 0)
+                        {
+                            <div class="gallery-photos-grid">
+                                @foreach (var url in _modalPhotos)
+                                {
+                                    var capturedUrl = url;
+                                    <div class="gallery-photo-thumb" @onclick="() => OpenPhoto(capturedUrl)">
+                                        <img src="@capturedUrl" alt="memory" loading="lazy" />
+                                        <button class="gallery-photo-delete"
+                                                @onclick="() => DeletePhoto(capturedUrl)"
+                                                @onclick:stopPropagation>✕</button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="gallery-photos-empty">No memories yet — add some photos from this day.</p>
+                        }
+                    </div>
+
                     <a class="gallery-modal-view-btn"
                        href="/?date=@_selected.Date.ToString("yyyy-MM-dd")">
                         View Full Art →
@@ -97,31 +134,73 @@
             </div>
         </div>
     }
+
+    <!-- Photo lightbox -->
+    @if (_lightboxUrl is not null)
+    {
+        <div class="gallery-lightbox" @onclick="() => _lightboxUrl = null">
+            <img src="@_lightboxUrl" alt="memory" @onclick:stopPropagation />
+            <button class="gallery-lightbox-close" @onclick="() => _lightboxUrl = null">✕</button>
+        </div>
+    }
 </div>
 
 @code {
     private List<DailyArt> _allArt = [];
     private DailyArt? _selected;
     private Dictionary<DateOnly, int> _viewsByDate = new();
+    private Dictionary<DateOnly, int> _photoCountsByDate = new();
     private List<ViewerEntry> _modalViewers = [];
+    private List<string> _modalPhotos = [];
+    private bool _uploading;
+    private string? _lightboxUrl;
 
     protected override async Task OnInitializedAsync()
     {
         _allArt = ArtCache.GetAllCachedArt();
         _viewsByDate = await ViewerDb.GetTotalViewsByDateAsync();
+        _photoCountsByDate = Photos.GetPhotoCountsByDate();
     }
 
     private async Task SelectArt(DailyArt art)
     {
         _selected = art;
+        _lightboxUrl = null;
         _modalViewers = await ViewerDb.GetViewersForDateAsync(art.Date);
+        _modalPhotos = Photos.GetPhotosForDate(art.Date);
     }
 
     private void CloseDetail()
     {
         _selected = null;
         _modalViewers = [];
+        _modalPhotos = [];
+        _lightboxUrl = null;
     }
+
+    private async Task HandlePhotoUpload(InputFileChangeEventArgs e)
+    {
+        if (_selected is null) return;
+        _uploading = true;
+        foreach (var file in e.GetMultipleFiles(20))
+        {
+            var url = await Photos.SavePhotoAsync(_selected.Date, file);
+            if (url is not null)
+                _modalPhotos.Add(url);
+        }
+        _photoCountsByDate = Photos.GetPhotoCountsByDate();
+        _uploading = false;
+    }
+
+    private void DeletePhoto(string url)
+    {
+        if (_selected is null) return;
+        Photos.DeletePhoto(_selected.Date, url);
+        _modalPhotos.Remove(url);
+        _photoCountsByDate = Photos.GetPhotoCountsByDate();
+    }
+
+    private void OpenPhoto(string url) => _lightboxUrl = url;
 
     private static string FlagUrl(ViewerEntry v) =>
         v.CountryCode == "US" && v.StateCode is not null
