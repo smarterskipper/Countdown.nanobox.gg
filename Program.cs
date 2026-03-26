@@ -32,6 +32,7 @@ builder.Services.AddSingleton<ArtCacheService>();
 builder.Services.AddSingleton<PlaywrightScreenshotService>();
 builder.Services.AddSingleton<DiscordNotificationService>();
 builder.Services.AddScoped<HolidayService>();
+builder.Services.AddSingleton<TimeAndDateHolidayService>();
 builder.Services.AddScoped<ArtGenerationService>();
 builder.Services.AddScoped<WeatherService>();
 builder.Services.AddHostedService<DailyArtHostedService>();

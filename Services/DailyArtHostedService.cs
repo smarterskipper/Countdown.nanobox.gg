@@ -52,8 +52,15 @@ public class DailyArtHostedService : BackgroundService
             if (cache.GetArtForDate(date) is null)
             {
                 var artGen = scope.ServiceProvider.GetRequiredService<ArtGenerationService>();
-                var holiday = holidayService.GetHolidayForDate(date)
-                           ?? holidayService.GetFallbackHoliday(date);
+
+                // 1. Try timeanddate.com (real observances, cultural days, etc.)
+                var tadService = scope.ServiceProvider.GetRequiredService<TimeAndDateHolidayService>();
+                var tadHolidays = await tadService.GetHolidaysAsync(date);
+                var holiday = tadService.PickBest(tadHolidays, date)
+                    // 2. Fall back to Nager.Date official public holidays
+                    ?? holidayService.GetHolidayForDate(date)
+                    // 3. Last resort: seasonal/astronomical context
+                    ?? holidayService.GetFallbackHoliday(date);
 
                 _logger.LogInformation("Generating art for {Date}: {Holiday} in {Country}",
                     date, holiday.Name, holiday.CountryName);

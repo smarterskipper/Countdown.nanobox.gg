@@ -79,15 +79,6 @@
     </div>
 </div>
 
-<!-- ── Weather info card ── -->
-@if (_weather is not null)
-{
-    <div class="weather-card">
-        <span class="weather-card-icon">@WeatherIcon(_weather.Type)</span>
-        <p class="weather-card-desc">@_weather.Description</p>
-        <span class="weather-card-location">📍 @_weather.Location</span>
-    </div>
-}
 
 @code {
     private static readonly DateOnly Target = new(2026, 8, 5);
