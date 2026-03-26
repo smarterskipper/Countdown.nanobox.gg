@@ -78,7 +78,12 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             {
                 ctx.Response.Redirect("/auth/pending");
                 ctx.HandleResponse();
+                return Task.CompletedTask;
             }
+            // Show error in browser so we can diagnose
+            var msg = Uri.EscapeDataString(ctx.Failure?.Message ?? "unknown error");
+            ctx.Response.Redirect($"/auth/login?error={msg}");
+            ctx.HandleResponse();
             return Task.CompletedTask;
         };
     });
