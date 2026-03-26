@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Anthropic.SDK" Version="5.10.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.5" />
     <PackageReference Include="Microsoft.Playwright" Version="1.58.0" />
     <PackageReference Include="MudBlazor" Version="9.2.0" />
     <PackageReference Include="Nager.Date" Version="2.17.1" />

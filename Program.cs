@@ -33,6 +33,9 @@ builder.Services.AddSingleton<PlaywrightScreenshotService>();
 builder.Services.AddSingleton<DiscordNotificationService>();
 builder.Services.AddScoped<HolidayService>();
 builder.Services.AddSingleton<TimeAndDateHolidayService>();
+builder.Services.AddSingleton<GeoLocationService>();
+builder.Services.AddSingleton<ViewerDbService>();
+builder.Services.AddSingleton<ViewerTrackingService>();
 builder.Services.AddScoped<ArtGenerationService>();
 builder.Services.AddScoped<WeatherService>();
 builder.Services.AddHostedService<DailyArtHostedService>();
@@ -45,6 +48,25 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
 }
+
+// ── Viewer tracking middleware — fires on real browser page loads ─────────────
+app.Use(async (ctx, next) =>
+{
+    if (ctx.Request.Method == "GET"
+        && ctx.Request.Path == "/"
+        && ctx.Request.Headers.Accept.Any(a => a != null && a.Contains("text/html")))
+    {
+        var ip = ctx.Request.Headers["CF-Connecting-IP"].FirstOrDefault()
+              ?? ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',')[0].Trim()
+              ?? ctx.Connection.RemoteIpAddress?.ToString();
+        if (ip is not null)
+        {
+            var tracker = ctx.RequestServices.GetRequiredService<ViewerTrackingService>();
+            _ = tracker.RecordVisitAsync(ip); // fire-and-forget, non-blocking
+        }
+    }
+    await next();
+});
 
 app.UseAntiforgery();
 

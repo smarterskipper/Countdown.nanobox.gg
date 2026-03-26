@@ -1,6 +1,7 @@
 @page "/gallery"
 @rendermode InteractiveServer
 @inject ArtCacheService ArtCache
+@inject ViewerDbService ViewerDb
 @inject NavigationManager Nav
 
 <PageTitle>Art Gallery · Countdown to August 5th</PageTitle>
@@ -28,6 +29,7 @@
         <div class="gallery-grid">
             @foreach (var art in _allArt)
             {
+                var views = _viewsByDate.GetValueOrDefault(art.Date, 0);
                 <div class="gallery-card @(_selected == art ? "gallery-card--active" : "")"
                      @onclick="() => SelectArt(art)"
                      style="--primary: @art.PrimaryColor; --accent: @art.AccentColor;">
@@ -40,7 +42,10 @@
                         <div class="gallery-card-holiday">@art.HolidayName</div>
                         <div class="gallery-card-meta">
                             <span>@GetFlag(art.CountryCode) @art.CountryName</span>
-                            <span class="gallery-card-score">★ @art.FinalScore.ToString("F1")</span>
+                            <span class="gallery-card-views">
+                                @if (views > 0)
+                                { <span>👁 @views</span> }
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -51,6 +56,7 @@
     <!-- Detail modal -->
     @if (_selected is not null)
     {
+        var modalViews = _viewsByDate.GetValueOrDefault(_selected.Date, 0);
         <div class="gallery-modal-backdrop" @onclick="CloseDetail">
             <div class="gallery-modal" @onclick:stopPropagation>
                 <button class="gallery-modal-close" @onclick="CloseDetail">✕</button>
@@ -63,7 +69,23 @@
                         Score: @_selected.FinalScore.ToString("F1")/10 ·
                         @_selected.AttemptCount attempt@(_selected.AttemptCount == 1 ? "" : "s") ·
                         Generated @_selected.GeneratedAt.ToString("HH:mm UTC")
+                        @if (modalViews > 0) { <span> · 👁 @modalViews views</span> }
                     </p>
+                    @if (_modalViewers.Count > 0)
+                    {
+                        <div class="gallery-modal-viewers">
+                            @foreach (var v in _modalViewers)
+                            {
+                                <span class="gallery-modal-viewer-chip" title="@(v.StateName ?? v.CountryName)">
+                                    <img src="@FlagUrl(v)"
+                                         alt="@(v.StateCode ?? v.CountryCode)"
+                                         onerror="@($"this.onerror=null;this.src='https://flagcdn.com/w20/{v.CountryCode.ToLower()}.png'")"
+                                         style="width:14px;height:10px;object-fit:cover;border-radius:2px;" />
+                                    @(v.StateCode ?? v.CountryCode) ×@v.Count
+                                </span>
+                            }
+                        </div>
+                    }
                     @if (!string.IsNullOrEmpty(_selected.FinalCritique))
                     {
                         <p class="gallery-modal-critique">Claude's notes: "@_selected.FinalCritique"</p>
@@ -77,14 +99,31 @@
 @code {
     private List<DailyArt> _allArt = [];
     private DailyArt? _selected;
+    private Dictionary<DateOnly, int> _viewsByDate = new();
+    private List<ViewerEntry> _modalViewers = [];
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         _allArt = ArtCache.GetAllCachedArt();
+        _viewsByDate = await ViewerDb.GetTotalViewsByDateAsync();
     }
 
-    private void SelectArt(DailyArt art) => _selected = art;
-    private void CloseDetail() => _selected = null;
+    private async Task SelectArt(DailyArt art)
+    {
+        _selected = art;
+        _modalViewers = await ViewerDb.GetViewersForDateAsync(art.Date);
+    }
+
+    private void CloseDetail()
+    {
+        _selected = null;
+        _modalViewers = [];
+    }
+
+    private static string FlagUrl(ViewerEntry v) =>
+        v.CountryCode == "US" && v.StateCode is not null
+            ? $"https://flagcdn.com/w20/us-{v.StateCode.ToLower()}.png"
+            : $"https://flagcdn.com/w20/{v.CountryCode.ToLower()}.png";
 
     private static string GetFlag(string countryCode) => countryCode.Length != 2 ? "🌍" :
         string.Concat(countryCode.ToUpperInvariant().Select(c => char.ConvertFromUtf32(c + 0x1F1A5)));

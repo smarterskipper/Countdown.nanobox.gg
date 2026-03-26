@@ -3,6 +3,7 @@
 @inject ArtCacheService ArtCache
 @inject WeatherService Weather
 @inject NavigationManager Nav
+@inject ViewerTrackingService ViewerTracker
 @implements IDisposable
 
 <PageTitle>Countdown to August 5th</PageTitle>
@@ -79,10 +80,43 @@
     </div>
 </div>
 
+<!-- ── Viewer sidebar ── -->
+<div class="viewer-sidebar">
+    <div class="viewer-header">
+        <span class="viewer-eye">👁</span>
+        <span class="viewer-title">Today</span>
+        <span class="viewer-total">@_totalViews</span>
+    </div>
+    <div class="viewer-list">
+        @if (_viewers.Count == 0)
+        {
+            <div class="viewer-empty">No visitors yet</div>
+        }
+        else
+        {
+            @foreach (var v in _viewers)
+            {
+                <div class="viewer-row" title="@(v.StateName ?? v.CountryName)">
+                    <img class="viewer-flag"
+                         src="@FlagUrl(v)"
+                         alt="@(v.StateCode ?? v.CountryCode)"
+                         onerror="@($"this.onerror=null;this.src='https://flagcdn.com/w20/{v.CountryCode.ToLower()}.png'")" />
+                    <span class="viewer-loc">
+                        @if (v.StateCode is not null)
+                        { @v.StateCode }
+                        else
+                        { @(v.CountryName.Length > 12 ? v.CountryCode : v.CountryName) }
+                    </span>
+                    <span class="viewer-count">@v.Count</span>
+                </div>
+            }
+        }
+    </div>
+</div>
 
 @code {
     private static readonly DateOnly Target = new(2026, 8, 5);
-    private static readonly DateOnly CountdownStart = new(2024, 2, 5); // 2.5 years before target
+    private static readonly DateOnly CountdownStart = new(2024, 2, 5);
 
     private DailyArt? _art;
     private string? _svgContent;
@@ -91,12 +125,40 @@
     private int _daysRemaining;
     private double _progressPercent;
 
+    private List<ViewerEntry> _viewers = [];
+    private int _totalViews;
+
     protected override void OnInitialized()
     {
         ArtCache.OnArtGenerated += HandleArtGenerated;
+        ViewerTracker.OnViewersUpdated += HandleViewersUpdated;
         LoadArt();
         LoadWeather();
         CalculateCountdown();
+
+        // Show whatever is already in the cache (non-blocking)
+        var (viewers, total) = ViewerTracker.GetCached();
+        _viewers = viewers;
+        _totalViews = total;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load fresh from DB on first render
+        var (viewers, total) = await ViewerTracker.LoadTodayAsync();
+        _viewers = viewers;
+        _totalViews = total;
+    }
+
+    private void HandleViewersUpdated()
+    {
+        InvokeAsync(() =>
+        {
+            var (viewers, total) = ViewerTracker.GetCached();
+            _viewers = viewers;
+            _totalViews = total;
+            StateHasChanged();
+        });
     }
 
     private void LoadArt()
@@ -122,7 +184,6 @@
         {
             _art = art;
             _svgContent = ArtCache.ReadSvgContent(art.Date);
-            // Also try to load weather if it just became available
             if (_weather is null) LoadWeather();
             StateHasChanged();
         });
@@ -142,7 +203,7 @@
 
     private static List<string> BuildParticles(WeatherEffect w)
     {
-        var rng = new Random(w.Date.DayNumber); // seeded so consistent per day
+        var rng = new Random(w.Date.DayNumber);
         var particles = new List<string>();
         int count = w.Type switch
         {
@@ -178,6 +239,12 @@
         return particles;
     }
 
+    // flagcdn.com supports ISO 3166-2 subdivision codes for US states
+    private static string FlagUrl(ViewerEntry v) =>
+        v.CountryCode == "US" && v.StateCode is not null
+            ? $"https://flagcdn.com/w20/us-{v.StateCode.ToLower()}.png"
+            : $"https://flagcdn.com/w20/{v.CountryCode.ToLower()}.png";
+
     private string ArtBgStyle => _art is null
         ? "background: linear-gradient(135deg, #0f0f1a 0%, #1a1a3e 100%);"
         : "";
@@ -208,5 +275,9 @@
         _ => "🌤"
     };
 
-    public void Dispose() => ArtCache.OnArtGenerated -= HandleArtGenerated;
+    public void Dispose()
+    {
+        ArtCache.OnArtGenerated -= HandleArtGenerated;
+        ViewerTracker.OnViewersUpdated -= HandleViewersUpdated;
+    }
 }

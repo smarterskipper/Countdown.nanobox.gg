@@ -356,6 +356,132 @@ body::before {
 }
 
 
+/* ── Viewer sidebar ───────────────────────────────────────────────────────── */
+.viewer-sidebar {
+    position: fixed;
+    right: 1.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    background: rgba(0,0,0,0.52);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 1rem;
+    padding: 0.5rem;
+    min-width: 128px;
+    max-height: 58vh;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    animation: rise-up 0.6s 0.5s var(--spring) both;
+}
+
+.viewer-header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.4rem 0.45rem;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    margin-bottom: 0.25rem;
+    flex-shrink: 0;
+}
+
+.viewer-eye { font-size: 0.75rem; opacity: 0.6; }
+
+.viewer-title {
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    flex: 1;
+}
+
+.viewer-total {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.75);
+    background: rgba(255,255,255,0.1);
+    border-radius: 999px;
+    padding: 0.08rem 0.42rem;
+}
+
+.viewer-list {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+}
+
+.viewer-list::-webkit-scrollbar { width: 3px; }
+.viewer-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+.viewer-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.28rem 0.4rem;
+    border-radius: 0.5rem;
+    cursor: default;
+    transition: background 0.15s;
+}
+.viewer-row:hover { background: rgba(255,255,255,0.07); }
+
+.viewer-flag {
+    width: 18px;
+    height: 13px;
+    object-fit: cover;
+    border-radius: 2px;
+    flex-shrink: 0;
+    display: block;
+}
+
+.viewer-loc {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: rgba(255,255,255,0.8);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.viewer-count {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.08);
+    border-radius: 999px;
+    padding: 0.08rem 0.38rem;
+    flex-shrink: 0;
+}
+
+.viewer-empty {
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.25);
+    padding: 0.4rem 0.4rem;
+    text-align: center;
+}
+
+/* ── Gallery viewer chips ─────────────────────────────────────────────────── */
+.gallery-modal-viewers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+}
+
+.gallery-modal-viewer-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 999px;
+    padding: 0.15rem 0.55rem 0.15rem 0.35rem;
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.6);
+}
+
 /* ── Gallery page ─────────────────────────────────────────────────────────── */
 .gallery-page {
     min-height: 100vh;
@@ -481,6 +607,11 @@ body:has(.gallery-page) {
 .gallery-card-score {
     color: var(--accent, #f59e0b);
     font-weight: 500;
+}
+
+.gallery-card-views {
+    color: rgba(255,255,255,0.4);
+    font-size: 0.75rem;
 }
 
 .gallery-empty { padding: 4rem 2rem; }
@@ -618,6 +749,9 @@ body:has(.gallery-page) {
     .weather-card-desc {
         font-size: 0.72rem;
     }
+
+    /* Viewer sidebar hidden on mobile */
+    .viewer-sidebar { display: none; }
 
     /* Gallery */
     .gallery-page {
