@@ -333,42 +333,39 @@ body::before {
                 background 1.2s ease;
 }
 
-/* ── Burning tip ──────────────────────────────────────────────────────────── */
+/* ── Burning tip — same height as bar, glows at the edge ─────────────────── */
 .progress-tip {
     position: absolute;
-    /* horizontally centred on the fill's right edge */
-    left: calc(var(--pct, 50) * 1% - 6px);
-    top: -3px;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
+    left: calc(var(--pct, 50) * 1% - 4px);
+    top: -1px;           /* sits flush with 5px bar, 1px bleed top+bottom */
+    width: 8px;
+    height: 7px;
+    border-radius: 2px;
     pointer-events: none;
-    background: radial-gradient(circle, #ffffff 0%, #ffe566 35%, #ff6600 65%, transparent 85%);
+    background: linear-gradient(90deg, #ffaa00, #ffffff);
     box-shadow:
-        0 0 4px  2px #ffffff,
-        0 0 10px 4px #ffcc00,
-        0 0 20px 8px #ff6600,
-        0 0 36px 14px #ff220055;
-    animation: tip-pulse 0.28s ease-in-out infinite alternate;
+        0 0 3px  2px #ffffff,
+        0 0 8px  4px #ffcc00,
+        0 0 14px 6px #ff6600,
+        0 0 22px 8px #ff220044;
+    animation: tip-pulse 0.32s ease-in-out infinite alternate;
     z-index: 2;
 }
 
 @keyframes tip-pulse {
     from {
         box-shadow:
-            0 0 4px  2px #ffffff,
-            0 0 10px 4px #ffcc00,
-            0 0 20px 8px #ff6600,
-            0 0 36px 14px #ff220055;
-        transform: scale(1);
+            0 0 3px  2px #ffffff,
+            0 0 8px  4px #ffcc00,
+            0 0 14px 6px #ff6600,
+            0 0 22px 8px #ff220044;
     }
     to {
         box-shadow:
-            0 0 6px  3px #ffffff,
-            0 0 14px 6px #ffdd00,
-            0 0 28px 12px #ff8800,
-            0 0 48px 18px #ff330077;
-        transform: scale(1.18);
+            0 0 5px  3px #ffffff,
+            0 0 12px 5px #ffee00,
+            0 0 20px 9px #ff8800,
+            0 0 30px 12px #ff440066;
     }
 }
 
@@ -377,21 +374,21 @@ body::before {
     position: absolute;
     left: calc(var(--pct, 50) * 1% + var(--ox, 0px));
     top: 2px;
-    width:  var(--sz, 2px);
-    height: var(--sz, 2px);
+    width:  var(--sz, 4px);
+    height: var(--sz, 4px);
     border-radius: 50%;
     background: var(--col, #ffcc44);
-    box-shadow: 0 0 3px 1px var(--col, #ff8800);
+    box-shadow: 0 0 5px 2px var(--col, #ff8800);
     pointer-events: none;
     opacity: 0;
     animation: spark-fall var(--dur, 700ms) var(--delay, 0ms) ease-in infinite;
 }
 
 @keyframes spark-fall {
-    0%   { transform: translate(0,          0);                              opacity: 1;   }
-    15%  { transform: translate(calc(var(--dx) * 0.2), calc(var(--rise) * -1px)); opacity: 1; }
-    60%  { opacity: 0.7; }
-    100% { transform: translate(var(--dx),  26px);                           opacity: 0;   }
+    0%   { transform: translate(0, 0);                                              opacity: 1;   }
+    15%  { transform: translate(calc(var(--dx) * 0.2), calc(var(--rise) * -1px));  opacity: 1;   }
+    60%  { opacity: 0.8; }
+    100% { transform: translate(var(--dx), 32px);                                   opacity: 0;   }
 }
 
 .progress-label {

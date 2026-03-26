@@ -254,7 +254,7 @@
         var duration = rng.Next(450, 1100);
         var offsetX  = rng.Next(-4, 5);       // spawn scatter around tip
         var driftX   = rng.Next(-18, 19);     // horizontal drift while falling
-        var size     = rng.Next(1, 4);
+        var size     = rng.Next(3, 9);
         var riseY    = rng.Next(0, 1) == 0 ? rng.Next(3, 10) : 0; // some sparks arc up first
         // colour: white-hot → yellow → orange
         var colours  = new[] { "#ffffff", "#fff4aa", "#ffcc44", "#ff9922", "#ff6600" };
@@ -281,8 +281,8 @@
         : $"background: {_art.PrimaryColor}22;";
 
     private string ProgressFillStyle => _art is null
-        ? ""
-        : $"background: linear-gradient(90deg, {_art.PrimaryColor}, {_art.SecondaryColor}); box-shadow: 0 0 12px {_art.PrimaryColor}88;";
+        ? "background: linear-gradient(90deg, rgba(255,255,255,0.25) 0%, rgba(255,180,0,0.7) 75%, #ffffff 100%);"
+        : $"background: linear-gradient(90deg, {_art.PrimaryColor} 0%, {_art.SecondaryColor} 55%, #ff8800 82%, #ffee44 93%, #ffffff 100%); box-shadow: 0 0 8px {_art.PrimaryColor}66;";
 
     private static string WeatherIcon(string type) => type switch
     {
