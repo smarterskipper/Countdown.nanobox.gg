@@ -33,7 +33,7 @@ public class PhotoService
         try
         {
             await using var fs = File.Create(path);
-            await using var stream = file.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024);
+            await using var stream = file.OpenReadStream(maxAllowedSize: 500 * 1024 * 1024);
             await stream.CopyToAsync(fs);
             return $"/art-cache/photos/{date:yyyy-MM-dd}/{name}";
         }

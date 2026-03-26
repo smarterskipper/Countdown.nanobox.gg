@@ -59,6 +59,63 @@ public class DiscordNotificationService
         }
     }
 
+    public async Task SendApprovalRequestAsync(string email, string token, string siteBaseUrl)
+    {
+        if (string.IsNullOrEmpty(_webhookUrl)) return;
+        var approveUrl = $"{siteBaseUrl}/auth/approve?token={token}";
+        var denyUrl    = $"{siteBaseUrl}/auth/deny?token={token}";
+
+        var payload = new
+        {
+            embeds = new[]
+            {
+                new
+                {
+                    title = "🔐 New sign-in request",
+                    description = $"**{email}** wants access to the countdown.",
+                    color = 0xF59E0B,
+                    fields = new[]
+                    {
+                        new { name = "Approve", value = $"[✅ Click to approve]({approveUrl})", inline = true },
+                        new { name = "Deny",    value = $"[❌ Click to deny]({denyUrl})",       inline = true }
+                    },
+                    footer = new { text = "Link expires in 24 hours" }
+                }
+            }
+        };
+
+        try
+        {
+            var json = JsonSerializer.Serialize(payload);
+            await _http.PostAsync(_webhookUrl, new StringContent(json, Encoding.UTF8, "application/json"));
+        }
+        catch (Exception ex) { _logger.LogWarning(ex, "Failed to send approval request to Discord"); }
+    }
+
+    public async Task SendApprovalResultAsync(string email, bool approved)
+    {
+        if (string.IsNullOrEmpty(_webhookUrl)) return;
+        var payload = new
+        {
+            embeds = new[]
+            {
+                new
+                {
+                    title = approved ? "✅ User approved" : "❌ User denied",
+                    description = $"**{email}** was {(approved ? "approved" : "denied")}.",
+                    color = approved ? 0x3BA55D : 0xED4245
+                }
+            }
+        };
+
+        try
+        {
+            var json = JsonSerializer.Serialize(payload);
+            await _http.PostAsync(_webhookUrl, new StringContent(json, Encoding.UTF8, "application/json"));
+        }
+        catch (Exception ex) { _logger.LogWarning(ex, "Failed to send approval result to Discord"); }
+    }
+
     private static int HexToInt(string hex)
     {
         try { return Convert.ToInt32(hex.TrimStart('#'), 16); }

@@ -1,4 +1,5 @@
 @page "/"
+@attribute [Authorize]
 @rendermode InteractiveServer
 @inject ArtCacheService ArtCache
 @inject WeatherService Weather
@@ -69,6 +70,7 @@
     }
     <div class="topbar-links">
         <a href="/gallery" class="topbar-link">Gallery</a>
+        <a href="/auth/logout" class="topbar-link" style="opacity:0.4;font-size:0.75rem;">Sign out</a>
     </div>
 </div>
 

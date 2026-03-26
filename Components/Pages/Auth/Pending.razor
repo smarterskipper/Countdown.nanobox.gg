@@ -1,0 +1,19 @@
+@page "/auth/pending"
+@layout HomelabCountdown.Components.Layout.MainLayout
+
+<PageTitle>Awaiting Approval · Countdown</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-brand">✦ CountDown</div>
+        <div style="font-size:2.5rem;margin-bottom:0.75rem;">⏳</div>
+        <h1 class="auth-title">Approval Requested</h1>
+        <p class="auth-subtitle">
+            The admin has been notified via Discord.<br />
+            Once approved, come back and sign in.
+        </p>
+        <a class="auth-google-btn" href="/auth/login" style="margin-top:1.5rem;background:rgba(255,255,255,0.06);">
+            ← Try signing in again
+        </a>
+    </div>
+</div>
