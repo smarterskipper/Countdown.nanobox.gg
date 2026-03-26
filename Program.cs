@@ -114,10 +114,13 @@ app.UseAuthorization();
 app.Use(async (ctx, next) =>
 {
     var path = ctx.Request.Path.Value ?? "";
+    var ext = Path.GetExtension(path);
     var isPublic = path.StartsWith("/auth",       StringComparison.OrdinalIgnoreCase)
                 || path.StartsWith("/_blazor",    StringComparison.OrdinalIgnoreCase)
                 || path.StartsWith("/_framework", StringComparison.OrdinalIgnoreCase)
-                || path.StartsWith("/_content",   StringComparison.OrdinalIgnoreCase);
+                || path.StartsWith("/_content",   StringComparison.OrdinalIgnoreCase)
+                || ext is ".css" or ".js" or ".woff" or ".woff2" or ".ttf"
+                       or ".png" or ".ico" or ".svg" or ".webp" or ".map";
 
     if (!isPublic && ctx.User.Identity?.IsAuthenticated != true)
     {
