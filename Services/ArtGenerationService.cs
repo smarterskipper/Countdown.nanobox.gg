@@ -141,15 +141,34 @@ public partial class ArtGenerationService
               6. Text shimmer — color or opacity animation on the holiday name text (4–8s)
             Use animation-iteration-count: infinite, ease-in-out. Apply via class names.
 
-            ═══ VISUAL STYLE ═══
-            Painterly and atmospheric — not flat or geometric. Think:
-            - Moody twilight or dawn sky with realistic light scatter
-            - Soft volumetric light rays or god-rays
-            - Subtle depth haze (lighter/desaturated distant elements)
-            - Rich deep shadow areas with local reflected color
-            - Textures implied through overlapping semi-transparent shapes
-            Avoid: hard edges, flat icon-style shapes, pure white fills, clipart aesthetics.
-            Color palette should feel cohesive — desaturated shadows, vivid highlights.
+            ═══ VISUAL STYLE — BOB ROSS OIL PAINTING ═══
+            This must look like a Bob Ross "Joy of Painting" landscape — loose, expressive,
+            warm oil-painting aesthetic rendered in SVG. Specific techniques to emulate:
+
+            SKIES: Dreamy gradient skies with soft blended cloud masses built from many
+              overlapping ellipses at varying opacity (0.1–0.4). Never a flat solid sky.
+              Warm peachy/golden near horizon, deeper blues/purples high up.
+
+            MOUNTAINS & HILLS: Soft silhouetted ridgelines using irregular paths. Layer 2–3
+              mountain ranges with progressively lighter values (atmospheric perspective).
+              Snow caps on peaks where appropriate — soft white with blue shadows.
+
+            TREES: Bob Ross "happy little trees" — dark evergreen shapes built from stacked
+              triangular or teardrop paths, slightly irregular. Cluster in groups of 3–7.
+              Add highlight strokes (lighter green) on one side for a lit edge.
+
+            WATER & REFLECTIONS: Lakes, rivers, or streams with horizontal gradient bands
+              reflecting the sky colors. Add subtle shimmer highlight strokes.
+
+            LIGHT: One warm light source (sun or moon). God-rays/crepuscular rays as thin
+              radial gradient shapes fanning out from the light source. Golden hour or
+              magic-hour color temperature preferred.
+
+            TEXTURE: Simulate paint texture with many overlapping semi-transparent shapes,
+              slight randomness in paths. Never flat fills — always gradients or texture layers.
+
+            Avoid: hard geometric edges, icons, clipart, flat fills, pure white, black outlines.
+            Every element should feel soft, organic, and hand-painted.
 
             ═══ TECHNICAL ═══
             - viewBox="0 0 900 600", width="100%", height="100%"
