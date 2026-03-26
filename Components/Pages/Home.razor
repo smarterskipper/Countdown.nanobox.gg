@@ -4,6 +4,7 @@
 @inject WeatherService Weather
 @inject NavigationManager Nav
 @inject ViewerTrackingService ViewerTracker
+@inject ViewerDbService ViewerDb
 @implements IDisposable
 
 <PageTitle>Countdown to August 5th</PageTitle>
@@ -42,7 +43,15 @@
 
 <!-- ── Top nav bar ── -->
 <div class="topbar" style="@(_art is not null ? $"border-bottom-color: {_art.PrimaryColor}30;" : "")">
-    <span class="topbar-brand">✦ CountDown</span>
+    @if (_isHistorical)
+    {
+        <a href="/" class="topbar-back">← Today</a>
+        <span class="topbar-date">@_viewingDate.ToString("MMMM d, yyyy")</span>
+    }
+    else
+    {
+        <span class="topbar-brand">✦ CountDown</span>
+    }
     <div class="topbar-links">
         <a href="/gallery" class="topbar-link">Gallery</a>
     </div>
@@ -80,7 +89,7 @@
         <!-- Art attribution / generating state -->
         @if (_art is null)
         {
-            <div class="art-credit generating">generating today's art…</div>
+            <div class="art-credit generating">@(_isHistorical ? "no art for this day" : "generating today's art…")</div>
         }
         else
         {
@@ -93,7 +102,7 @@
 <div class="viewer-sidebar">
     <div class="viewer-header">
         <span class="viewer-eye">👁</span>
-        <span class="viewer-title">Today</span>
+        <span class="viewer-title">@(_isHistorical ? _viewingDate.ToString("MMM d") : "Today")</span>
         <span class="viewer-total">@_totalViews</span>
     </div>
     <div class="viewer-list">
@@ -127,6 +136,12 @@
     private static readonly DateOnly Target = new(2026, 8, 5);
     private static readonly DateOnly CountdownStart = new(2024, 2, 5);
 
+    [Parameter, SupplyParameterFromQuery(Name = "date")]
+    public string? DateParam { get; set; }
+
+    private DateOnly _viewingDate;
+    private bool _isHistorical;
+
     private DailyArt? _art;
     private string? _svgContent;
     private WeatherEffect? _weather;
@@ -139,24 +154,45 @@
 
     protected override void OnInitialized()
     {
-        ArtCache.OnArtGenerated += HandleArtGenerated;
-        ViewerTracker.OnViewersUpdated += HandleViewersUpdated;
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        _viewingDate = DateParam is not null && DateOnly.TryParse(DateParam, out var parsed)
+            ? parsed
+            : today;
+        _isHistorical = _viewingDate != today;
+
+        // Only subscribe to live events when viewing today
+        if (!_isHistorical)
+        {
+            ArtCache.OnArtGenerated += HandleArtGenerated;
+            ViewerTracker.OnViewersUpdated += HandleViewersUpdated;
+
+            // Show whatever is already in the cache (non-blocking)
+            var (viewers, total) = ViewerTracker.GetCached();
+            _viewers = viewers;
+            _totalViews = total;
+        }
+
         LoadArt();
         LoadWeather();
         CalculateCountdown();
-
-        // Show whatever is already in the cache (non-blocking)
-        var (viewers, total) = ViewerTracker.GetCached();
-        _viewers = viewers;
-        _totalViews = total;
     }
 
     protected override async Task OnInitializedAsync()
     {
-        // Load fresh from DB on first render
-        var (viewers, total) = await ViewerTracker.LoadTodayAsync();
-        _viewers = viewers;
-        _totalViews = total;
+        if (_isHistorical)
+        {
+            // Load historical viewer data from DB
+            var viewers = await ViewerDb.GetViewersForDateAsync(_viewingDate);
+            _viewers = viewers;
+            _totalViews = viewers.Sum(v => v.Count);
+        }
+        else
+        {
+            // Load fresh from DB on first render
+            var (viewers, total) = await ViewerTracker.LoadTodayAsync();
+            _viewers = viewers;
+            _totalViews = total;
+        }
     }
 
     private void HandleViewersUpdated()
@@ -172,23 +208,21 @@
 
     private void LoadArt()
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
-        _art = ArtCache.GetArtForDate(today);
+        _art = ArtCache.GetArtForDate(_viewingDate);
         if (_art is not null)
-            _svgContent = ArtCache.ReadSvgContent(today);
+            _svgContent = ArtCache.ReadSvgContent(_viewingDate);
     }
 
     private void LoadWeather()
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
-        _weather = ArtCache.GetWeatherForDate(today);
+        _weather = ArtCache.GetWeatherForDate(_viewingDate);
         if (_weather is not null)
             _particles = BuildParticles(_weather);
     }
 
     private void HandleArtGenerated(DailyArt art)
     {
-        if (art.Date != DateOnly.FromDateTime(DateTime.Today)) return;
+        if (art.Date != _viewingDate) return;
         InvokeAsync(() =>
         {
             _art = art;
@@ -200,11 +234,10 @@
 
     private void CalculateCountdown()
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
-        _daysRemaining = Math.Max(0, Target.DayNumber - today.DayNumber);
+        _daysRemaining = Math.Max(0, Target.DayNumber - _viewingDate.DayNumber);
 
         var totalDays = Target.DayNumber - CountdownStart.DayNumber;
-        var elapsed = today.DayNumber - CountdownStart.DayNumber;
+        var elapsed = _viewingDate.DayNumber - CountdownStart.DayNumber;
         _progressPercent = totalDays > 0
             ? Math.Min(100, Math.Max(0, (double)elapsed / totalDays * 100))
             : 100;
@@ -285,20 +318,6 @@
     private string ProgressFillStyle => _art is null
         ? "background-color: rgba(255,255,255,0.35); background-image: linear-gradient(90deg, transparent 60%, rgba(255,130,0,0.65) 82%, rgba(255,220,80,0.95) 94%, #ffffff 100%);"
         : $"background-color: {_art.PrimaryColor}; background-image: linear-gradient(90deg, transparent 55%, rgba(255,110,0,0.6) 80%, rgba(255,220,70,0.95) 93%, #ffffff 100%); box-shadow: 0 0 8px {_art.PrimaryColor}66;";
-
-    private static string WeatherIcon(string type) => type switch
-    {
-        "rain" => "🌧",
-        "storm" => "⛈",
-        "snow" => "❄️",
-        "sun" => "☀️",
-        "heat" => "🌡",
-        "wind" => "💨",
-        "fog" => "🌫",
-        "aurora" => "🌌",
-        "cloud" => "☁️",
-        _ => "🌤"
-    };
 
     public void Dispose()
     {
