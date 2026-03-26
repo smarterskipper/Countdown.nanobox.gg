@@ -4,10 +4,49 @@
 html, body {
     height: 100%;
     overflow: hidden;
-    font-family: 'Roboto', 'Segoe UI', sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     background: #0f0f1a;
     color: #e2e8f0;
 }
+
+/* ── Grain texture (premium dark-mode staple) ─────────────────────────────── */
+body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    pointer-events: none;
+    opacity: 0.045;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+}
+
+/* ── Edge vignette (frames art without blocking it) ───────────────────────── */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(0,0,0,0.6) 100%);
+}
+
+/* ── Entrance keyframes ───────────────────────────────────────────────────── */
+@keyframes slide-down {
+    from { transform: translateY(-100%); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+}
+@keyframes scale-in {
+    from { transform: scale(0.96); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+}
+@keyframes rise-up {
+    from { transform: translateY(16px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Spring easing used throughout — same curve as Linear/Vercel */
+:root { --spring: cubic-bezier(0.16, 1, 0.3, 1); }
 
 /* ── Art background ───────────────────────────────────────────────────────── */
 .art-bg {
@@ -167,12 +206,7 @@ html, body {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
-    animation: fade-up 0.6s ease;
-}
-
-@keyframes fade-up {
-    from { transform: translateY(10px); opacity: 0; }
-    to   { transform: translateY(0);    opacity: 1; }
+    animation: rise-up 0.6s 0.4s var(--spring) both;
 }
 
 .weather-card-icon { font-size: 1.4rem; line-height: 1; }
@@ -199,33 +233,36 @@ html, body {
     justify-content: space-between;
     align-items: center;
     padding: 1rem 2rem;
-    background: rgba(0,0,0,0.25);
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: rgba(0,0,0,0.2);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    transition: border-bottom-color 1.5s ease;
+    animation: slide-down 0.6s var(--spring) both;
 }
 
 .topbar-brand {
-    font-size: 1rem;
+    font-size: 0.8rem;
     font-weight: 500;
-    letter-spacing: 0.15em;
-    color: rgba(255,255,255,0.6);
+    letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.45);
     text-transform: uppercase;
 }
 
 .topbar-links { display: flex; gap: 1.5rem; align-items: center; }
 
 .topbar-link {
-    color: rgba(255,255,255,0.75);
+    color: rgba(255,255,255,0.5);
     text-decoration: none;
-    font-size: 0.9rem;
-    letter-spacing: 0.05em;
+    font-size: 0.82rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
     background: none;
     border: none;
     cursor: pointer;
     padding: 0;
     transition: color 0.2s;
 }
-.topbar-link:hover { color: #fff; }
+.topbar-link:hover { color: rgba(255,255,255,0.9); }
 
 /* ── Countdown center card ────────────────────────────────────────────────── */
 .countdown-center {
@@ -247,34 +284,17 @@ html, body {
     padding: 2rem clamp(1.25rem, 5vw, 3.5rem);
     text-align: center;
     width: min(92vw, 500px);
-}
-
-.loading-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.5rem;
-    padding: 3rem 4rem;
-    background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(16px);
-    border-radius: 1.5rem;
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
-.loading-text {
-    color: rgba(255,255,255,0.6);
-    font-size: 0.95rem;
-    text-shadow: 0 1px 6px rgba(0,0,0,0.8);
+    animation: scale-in 0.7s 0.1s var(--spring) both;
 }
 
 /* ── Days number ──────────────────────────────────────────────────────────── */
 .days-number {
-    font-size: clamp(4.5rem, 20vw, 8rem);
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -0.03em;
-    transition: color 1s ease;
-    text-shadow: 0 2px 20px rgba(0,0,0,0.9), 0 0 60px currentColor;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(5rem, 22vw, 9rem);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    transition: color 1s ease, text-shadow 1s ease;
 }
 
 .days-label {
@@ -318,10 +338,21 @@ html, body {
 /* ── Art credit ───────────────────────────────────────────────────────────── */
 .art-credit {
     font-size: 0.72rem;
-    color: rgba(255,255,255,0.5);
+    font-weight: 400;
+    font-style: italic;
+    color: rgba(255,255,255,0.45);
     text-shadow: 0 1px 4px rgba(0,0,0,0.9);
-    letter-spacing: 0.05em;
-    margin-top: 0.25rem;
+    letter-spacing: 0.06em;
+    margin-top: 0.3rem;
+}
+
+.art-credit.generating {
+    animation: credit-pulse 2s ease-in-out infinite;
+}
+
+@keyframes credit-pulse {
+    0%, 100% { opacity: 0.3; }
+    50%       { opacity: 0.7; }
 }
 
 
@@ -361,9 +392,11 @@ body:has(.gallery-page) {
 .gallery-back:hover { color: #fff; }
 
 .gallery-title {
+    font-family: 'Syne', sans-serif;
     font-size: 2.2rem;
-    font-weight: 700;
+    font-weight: 800;
     color: #fff;
+    letter-spacing: -0.02em;
 }
 
 .gallery-subtitle {
@@ -386,12 +419,14 @@ body:has(.gallery-page) {
     border-radius: 1rem;
     overflow: hidden;
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
+    transform-style: preserve-3d;
+    transition: transform 0.35s var(--spring), box-shadow 0.35s ease, border-color 0.2s;
+    will-change: transform;
 }
 
 .gallery-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    transform: perspective(800px) rotateX(3deg) rotateY(-2deg) translateY(-6px) scale(1.02);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px var(--accent, #f59e0b44);
     border-color: var(--accent, #f59e0b);
 }
 

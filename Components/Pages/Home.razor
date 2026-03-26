@@ -40,7 +40,7 @@
 }
 
 <!-- ── Top nav bar ── -->
-<div class="topbar">
+<div class="topbar" style="@(_art is not null ? $"border-bottom-color: {_art.PrimaryColor}30;" : "")">
     <span class="topbar-brand">✦ CountDown</span>
     <div class="topbar-links">
         <a href="/gallery" class="topbar-link">Gallery</a>
@@ -49,39 +49,34 @@
 
 <!-- ── Main countdown card ── -->
 <div class="countdown-center">
-    @if (_art is null)
-    {
-        <div class="countdown-card loading-card">
-            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
-            <p class="loading-text">Generating today's art with Claude…</p>
+    <div class="countdown-card">
+        <!-- Days number — shown immediately, themed once art loads -->
+        <div class="days-number" style="@DaysNumberStyle">
+            @_daysRemaining
         </div>
-    }
-    else
-    {
-        <div class="countdown-card">
-            <!-- Days number -->
-            <div class="days-number" style="color: @_art.AccentColor; text-shadow: 0 2px 20px rgba(0,0,0,0.9), 0 0 60px @(_art.AccentColor)88;">
-                @_daysRemaining
-            </div>
-            <div class="days-label">days until August 5th</div>
+        <div class="days-label">days until August 5th</div>
 
-            <!-- Progress bar -->
-            <div class="progress-track">
-                <div class="progress-fill"
-                     style="width: @(_progressPercent.ToString("F1"))%;
-                            background: linear-gradient(90deg, @_art.PrimaryColor, @_art.SecondaryColor);">
-                </div>
-            </div>
-            <div class="progress-label">
-                @_progressPercent.ToString("F0")% of the journey
-            </div>
-
-            <!-- Art attribution -->
-            <div class="art-credit">
-                Art by Claude · score @_art.FinalScore.ToString("F1")/10 · @_art.Theme
+        <!-- Progress bar -->
+        <div class="progress-track" style="@ProgressTrackStyle">
+            <div class="progress-fill"
+                 style="width: @(_progressPercent.ToString("F1"))%;
+                        @ProgressFillStyle">
             </div>
         </div>
-    }
+        <div class="progress-label">
+            @_progressPercent.ToString("F0")% of the journey
+        </div>
+
+        <!-- Art attribution / generating state -->
+        @if (_art is null)
+        {
+            <div class="art-credit generating">generating today's art…</div>
+        }
+        else
+        {
+            <div class="art-credit">@_art.Theme</div>
+        }
+    </div>
 </div>
 
 <!-- ── Weather info card ── -->
@@ -195,6 +190,18 @@
     private string ArtBgStyle => _art is null
         ? "background: linear-gradient(135deg, #0f0f1a 0%, #1a1a3e 100%);"
         : "";
+
+    private string DaysNumberStyle => _art is null
+        ? "color: rgba(255,255,255,0.85); text-shadow: 0 2px 20px rgba(0,0,0,0.9);"
+        : $"color: {_art.AccentColor}; text-shadow: 0 2px 20px rgba(0,0,0,0.9), 0 0 80px {_art.AccentColor}66;";
+
+    private string ProgressTrackStyle => _art is null
+        ? ""
+        : $"background: {_art.PrimaryColor}22;";
+
+    private string ProgressFillStyle => _art is null
+        ? "background: rgba(255,255,255,0.2);"
+        : $"background: linear-gradient(90deg, {_art.PrimaryColor}, {_art.SecondaryColor}); box-shadow: 0 0 12px {_art.PrimaryColor}88;";
 
     private static string WeatherIcon(string type) => type switch
     {

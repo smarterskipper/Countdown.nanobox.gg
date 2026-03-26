@@ -141,6 +141,16 @@ public partial class ArtGenerationService
               6. Text shimmer — color or opacity animation on the holiday name text (4–8s)
             Use animation-iteration-count: infinite, ease-in-out. Apply via class names.
 
+            ═══ VISUAL STYLE ═══
+            Painterly and atmospheric — not flat or geometric. Think:
+            - Moody twilight or dawn sky with realistic light scatter
+            - Soft volumetric light rays or god-rays
+            - Subtle depth haze (lighter/desaturated distant elements)
+            - Rich deep shadow areas with local reflected color
+            - Textures implied through overlapping semi-transparent shapes
+            Avoid: hard edges, flat icon-style shapes, pure white fills, clipart aesthetics.
+            Color palette should feel cohesive — desaturated shadows, vivid highlights.
+
             ═══ TECHNICAL ═══
             - viewBox="0 0 900 600", width="100%", height="100%"
             - Use SVG <filter> for at least one glow effect:
