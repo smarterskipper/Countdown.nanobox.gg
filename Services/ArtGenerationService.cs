@@ -53,24 +53,39 @@ public partial class ArtGenerationService
             _logger.LogInformation("Art generation attempt {Attempt}/{Max}", attempt, MaxAttempts);
 
             svg = await GenerateSvgAsync(holiday, critique, attempt);
+
+            // ── Code review before rendering ──────────────────────────────
+            var review = await ReviewSvgCodeAsync(svg);
+            _logger.LogInformation("Code review — pass: {Pass}, animations: {Anim}, issues: {Issues}",
+                review.Pass, review.AnimationCount, review.CriticalIssues);
+
+            if (!review.Pass && attempt < MaxAttempts)
+            {
+                critique = $"CODE REVIEW FAILED — fix these before anything else: {review.CriticalIssues}. {review.Suggestions}";
+                _logger.LogInformation("Skipping render, regenerating due to code issues");
+                continue;
+            }
+
+            // ── Visual score ──────────────────────────────────────────────
             screenshot = await _playwright.ScreenshotSvgAsync(svg);
             score = await ScoreScreenshotAsync(screenshot, holiday);
 
-            _logger.LogInformation("Attempt {Attempt} score: {Score}/10 — {Critique}",
+            _logger.LogInformation("Attempt {Attempt} visual score: {Score}/10 — {Critique}",
                 attempt, score.Score, score.Critique);
 
+            // Combine visual critique with any code suggestions
             critique = score.Critique;
+            if (!string.IsNullOrEmpty(review.Suggestions))
+                critique += $" Code: {review.Suggestions}";
 
-            if (score.Score >= PassScore)
+            if (score.Score >= PassScore && review.Pass)
             {
-                _logger.LogInformation("Art passed score threshold on attempt {Attempt}", attempt);
+                _logger.LogInformation("Art passed all checks on attempt {Attempt}", attempt);
                 break;
             }
 
             if (attempt >= MaxAttempts)
-            {
                 _logger.LogInformation("Reached max attempts, keeping best result (score {Score})", score.Score);
-            }
         }
 
         var art = new DailyArt
@@ -205,6 +220,60 @@ public partial class ArtGenerationService
         return ParseScore(json);
     }
 
+    private async Task<CodeReview> ReviewSvgCodeAsync(string svg)
+    {
+        var svgPreview = svg[..Math.Min(svg.Length, 6000)];
+        var prompt = $"""
+            You are an SVG code reviewer. Inspect this SVG and check for technical correctness.
+
+            REQUIRED checks (all must pass):
+            1. Has <svg with viewBox="0 0 900 600", width="100%", height="100%"
+            2. Has a <style> block with at least 3 distinct @keyframes defined
+            3. Every @keyframes name referenced in animation: properties actually exists in the <style> block
+            4. Every class name used in animation: actually appears on at least one SVG element (e.g. class="pulse")
+            5. SVG <filter> elements: if present, all result= attributes referenced in later filter primitives exist
+            6. Gradient IDs referenced in fill="url(#...)" or stroke="url(#...)" are defined in <defs>
+            7. Contains ARTMETA comment with valid JSON before </svg>
+            8. Has meaningful layered content — not just a plain gradient rect (must have shapes/paths/text/symbols)
+
+            If any check fails, set pass=false and list the specific failing checks in critical_issues.
+            Respond ONLY with valid JSON on one line, fields: pass, critical_issues, suggestions, animation_count
+
+            SVG to review (first 6000 chars):
+            {svgPreview}
+            """;
+
+        try
+        {
+            var response = await _claude.Messages.GetClaudeMessageAsync(new MessageParameters
+            {
+                Messages = [new Message(RoleType.User, prompt)],
+                Model = AnthropicModels.Claude46Sonnet,
+                MaxTokens = 512,
+                Stream = false,
+                Temperature = 0m
+            });
+
+            var json = response.Content.OfType<TextContent>().FirstOrDefault()?.Text ?? "{}";
+            var clean = JsonFenceRegex().Replace(json, "").Trim();
+            var doc = JsonDocument.Parse(clean);
+            var root = doc.RootElement;
+
+            return new CodeReview
+            {
+                Pass = root.TryGetProperty("pass", out var p) && p.GetBoolean(),
+                CriticalIssues = root.TryGetProperty("critical_issues", out var ci) ? ci.GetString() ?? "" : "",
+                Suggestions = root.TryGetProperty("suggestions", out var s) ? s.GetString() ?? "" : "",
+                AnimationCount = root.TryGetProperty("animation_count", out var ac) ? ac.GetInt32() : 0
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Code review parse failed, treating as pass");
+            return new CodeReview { Pass = true };
+        }
+    }
+
     private static string ExtractSvg(string raw)
     {
         var start = raw.IndexOf("<svg", StringComparison.OrdinalIgnoreCase);
@@ -244,6 +313,14 @@ public partial class ArtGenerationService
 
     [GeneratedRegex(@"```[a-z]*\n?|```")]
     private static partial Regex JsonFenceRegex();
+
+    private sealed class CodeReview
+    {
+        public bool Pass { get; set; }
+        public string CriticalIssues { get; set; } = "";
+        public string Suggestions { get; set; } = "";
+        public int AnimationCount { get; set; }
+    }
 
     private sealed class ArtScore
     {
