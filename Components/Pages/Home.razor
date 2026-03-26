@@ -258,7 +258,7 @@
         : $"background: {_art.PrimaryColor}22;";
 
     private string ProgressFillStyle => _art is null
-        ? "background: rgba(255,255,255,0.2);"
+        ? ""
         : $"background: linear-gradient(90deg, {_art.PrimaryColor}, {_art.SecondaryColor}); box-shadow: 0 0 12px {_art.PrimaryColor}88;";
 
     private static string WeatherIcon(string type) => type switch
