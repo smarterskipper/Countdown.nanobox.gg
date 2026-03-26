@@ -13,17 +13,20 @@ jobs:
     steps:
       # ── 0. Discord — deploy started ───────────────────────────────────────
       - name: Notify Discord — started
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           SHORT_SHA="${{ github.sha }}"
           SHORT_SHA="${SHORT_SHA:0:7}"
           PAYLOAD=$(jq -n \
             --arg sha "$SHORT_SHA" \
-            --arg msg "${{ github.event.head_commit.message }}" \
+            --arg msg "$COMMIT_MSG" \
             --arg actor "${{ github.actor }}" \
             --arg run_num "${{ github.run_number }}" \
             --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             '{embeds:[{title:"🔨 Deploy started",description:("`"+$sha+"`  "+$msg),color:16776960,fields:[{name:"Triggered by",value:$actor,inline:true},{name:"Run",value:("[#"+$run_num+"]("+$run_url+")"),inline:true}],footer:{text:"HomelabCountdown CI/CD"}}]}')
-          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+          curl -s -X POST "$DISCORD_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
 
@@ -84,22 +87,28 @@ jobs:
       # ── 7. Discord success notification ───────────────────────────────────
       - name: Notify Discord — success
         if: success()
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           SHORT_SHA="${{ github.sha }}"
           SHORT_SHA="${SHORT_SHA:0:7}"
           PAYLOAD=$(jq -n \
             --arg sha "$SHORT_SHA" \
-            --arg msg "${{ github.event.head_commit.message }}" \
+            --arg msg "$COMMIT_MSG" \
             --arg actor "${{ github.actor }}" \
             --arg branch "${{ github.ref_name }}" \
             '{embeds:[{title:"✅ Deploy succeeded",description:"**countdown.nanobox.gg** is live",color:3066993,fields:[{name:"Commit",value:("`"+$sha+"`  "+$msg),inline:false},{name:"Triggered by",value:$actor,inline:true},{name:"Branch",value:$branch,inline:true}],footer:{text:"HomelabCountdown CI/CD"}}]}')
-          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+          curl -s -X POST "$DISCORD_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
 
       # ── 8. Discord failure notification ───────────────────────────────────
       - name: Notify Discord — failure
         if: failure()
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           SHORT_SHA="${{ github.sha }}"
           SHORT_SHA="${SHORT_SHA:0:7}"
@@ -109,11 +118,11 @@ jobs:
             || echo "logs unavailable")
           PAYLOAD=$(jq -n \
             --arg sha "$SHORT_SHA" \
-            --arg msg "${{ github.event.head_commit.message }}" \
+            --arg msg "$COMMIT_MSG" \
             --arg actor "${{ github.actor }}" \
             --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --arg logs "$LOGS" \
             '{embeds:[{title:"❌ Deploy failed",color:15158332,fields:[{name:"Commit",value:("`"+$sha+"`  "+$msg),inline:false},{name:"Triggered by",value:$actor,inline:true},{name:"Run",value:("[view logs]("+$run_url+")"),inline:true},{name:"Service logs",value:("```\n"+$logs+"\n```"),inline:false}],footer:{text:"HomelabCountdown CI/CD"}}]}')
-          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+          curl -s -X POST "$DISCORD_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
