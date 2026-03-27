@@ -83,11 +83,11 @@ body::before {
     to   { opacity: 1; }
 }
 
-/* ── Animated video background (MiniMax Video) ────────────────────────────── */
+/* ── Animated video background (MiniMax Video, injected via JS) ───────────── */
 .art-bg-video {
     position: fixed;
     inset: 0;
-    z-index: 0;
+    z-index: 1;
     width: 100%;
     height: 100%;
     object-fit: cover;
