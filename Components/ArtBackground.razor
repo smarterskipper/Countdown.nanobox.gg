@@ -1,10 +1,10 @@
 @* Isolated background component — ShouldRender blocks per-second clock re-renders
    so the video element is never patched by Blazor and plays uninterrupted. *@
+@inject IJSRuntime JS
 
 @if (!string.IsNullOrEmpty(VideoUrl))
 {
-    <video class="art-bg-video" autoplay loop muted playsinline
-           oncanplay="this.playbackRate=0.05">
+    <video @ref="_videoRef" class="art-bg-video" autoplay loop muted playsinline>
         <source src="@VideoUrl" type="video/mp4">
     </video>
 }
@@ -17,6 +17,7 @@ else
     [Parameter] public string? VideoUrl  { get; set; }
     [Parameter] public string? BgStyle   { get; set; }
 
+    private ElementReference _videoRef;
     private string? _renderedVideoUrl;
     private string? _renderedBgStyle;
 
@@ -36,5 +37,16 @@ else
             return true;
         }
         return false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!string.IsNullOrEmpty(VideoUrl))
+        {
+            // Set slow playback and ensure play() is called — oncanplay HTML attribute
+            // is unreliable on first load and 0.05 is below Chrome's minimum rate (~0.063)
+            await JS.InvokeVoidAsync("eval",
+                "var v = document.querySelector('video.art-bg-video'); if(v){ v.playbackRate=0.15; v.play().catch(()=>{}); }");
+        }
     }
 }
