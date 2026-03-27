@@ -5,12 +5,13 @@ using System.Text.Json;
 namespace HomelabCountdown.Services;
 
 /// <summary>
-/// Calls the Replicate API to generate an image via Flux 1.1 Pro.
-/// Handles prediction creation, polling, and image download.
+/// Calls the Replicate API to generate images (Flux 2 Pro) and animate them (Stable Video Diffusion).
 /// </summary>
 public class ReplicateImageService
 {
     private const string PredictionUrl = "https://api.replicate.com/v1/models/black-forest-labs/flux-2-pro/predictions";
+    private const string SvdUrl = "https://api.replicate.com/v1/models/stability-ai/stable-video-diffusion/predictions";
+    private const string FilesUrl = "https://api.replicate.com/v1/files";
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(5);
 
@@ -100,5 +101,98 @@ public class ReplicateImageService
         }
 
         throw new TimeoutException($"Replicate prediction {predId} did not complete within {Timeout}");
+    }
+
+    /// <summary>
+    /// Uploads a PNG to Replicate file hosting and returns its hosted URL.
+    /// </summary>
+    private async Task<string> UploadFileAsync(byte[] bytes, CancellationToken ct)
+    {
+        using var form = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(bytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        form.Add(fileContent, "content", "image.png");
+
+        var resp = await _http.PostAsync(FilesUrl, form, ct);
+        resp.EnsureSuccessStatusCode();
+
+        var json = await resp.Content.ReadAsStringAsync(ct);
+        var doc = JsonDocument.Parse(json);
+        return doc.RootElement.GetProperty("urls").GetProperty("get").GetString()
+            ?? throw new InvalidOperationException("No URL in Replicate file upload response");
+    }
+
+    /// <summary>
+    /// Takes a PNG image and animates it into a short looping MP4 via Stable Video Diffusion.
+    /// </summary>
+    public async Task<byte[]> AnimateImageAsync(byte[] imagePng, CancellationToken ct = default)
+    {
+        _logger.LogInformation("Uploading image to Replicate for animation…");
+        var imageUrl = await UploadFileAsync(imagePng, ct);
+
+        _logger.LogInformation("Submitting SVD prediction");
+        var body = JsonSerializer.Serialize(new
+        {
+            input = new
+            {
+                input_image = imageUrl,
+                video_length = "25_frames_with_svd_xt",
+                sizing_strategy = "crop_to_aspect_ratio",
+                frames_per_second = 6,
+                motion_bucket_id = 127,
+                cond_aug = 0.02
+            }
+        });
+
+        var createResp = await _http.PostAsync(
+            SvdUrl,
+            new StringContent(body, Encoding.UTF8, "application/json"),
+            ct);
+
+        createResp.EnsureSuccessStatusCode();
+        var createJson = await createResp.Content.ReadAsStringAsync(ct);
+        var createDoc = JsonDocument.Parse(createJson);
+
+        var predId = createDoc.RootElement.GetProperty("id").GetString()
+            ?? throw new InvalidOperationException("No prediction ID in SVD response");
+        var pollUrl = createDoc.RootElement.GetProperty("urls").GetProperty("get").GetString()
+            ?? throw new InvalidOperationException("No poll URL in SVD response");
+
+        _logger.LogInformation("SVD prediction {Id} created, polling…", predId);
+
+        var deadline = DateTime.UtcNow + Timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(PollInterval, ct);
+
+            var pollResp = await _http.GetAsync(pollUrl, ct);
+            pollResp.EnsureSuccessStatusCode();
+
+            var pollJson = await pollResp.Content.ReadAsStringAsync(ct);
+            var pollDoc = JsonDocument.Parse(pollJson);
+            var status = pollDoc.RootElement.GetProperty("status").GetString();
+
+            _logger.LogInformation("SVD {Id} status: {Status}", predId, status);
+
+            if (status == "succeeded")
+            {
+                var outputEl = pollDoc.RootElement.GetProperty("output");
+                var videoUrl = outputEl.ValueKind == JsonValueKind.Array
+                    ? outputEl.EnumerateArray().First().GetString()
+                    : outputEl.GetString()
+                    ?? throw new InvalidOperationException("No output URL in succeeded SVD prediction");
+
+                _logger.LogInformation("SVD {Id} succeeded, downloading video from {Url}", predId, videoUrl);
+                return await _http.GetByteArrayAsync(videoUrl, ct);
+            }
+
+            if (status is "failed" or "canceled")
+            {
+                var error = pollDoc.RootElement.TryGetProperty("error", out var e) ? e.GetString() : "unknown";
+                throw new InvalidOperationException($"SVD prediction {predId} {status}: {error}");
+            }
+        }
+
+        throw new TimeoutException($"SVD prediction {predId} did not complete within {Timeout}");
     }
 }

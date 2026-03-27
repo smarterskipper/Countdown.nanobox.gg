@@ -113,6 +113,20 @@ public partial class ArtGenerationService
 
         _status.Update("Saving…", attempt, MaxAttempts, score?.Score);
         await _cache.SaveArtAsync(art, image!);
+
+        // Animate the still image into a short looping video
+        _status.Update("Animating painting…", attempt, MaxAttempts, score?.Score);
+        try
+        {
+            var video = await _replicate.AnimateImageAsync(image!);
+            await _cache.SaveVideoAsync(art, video);
+            _logger.LogInformation("Video animation saved for {Date}", date);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Animation failed for {Date} — static image will be used", date);
+        }
+
         _status.Clear();
         return art;
     }

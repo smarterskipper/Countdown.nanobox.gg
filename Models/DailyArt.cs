@@ -20,9 +20,17 @@ public class DailyArt
     public string FinalCritique { get; set; } = "";
     public DateTime GeneratedAt { get; set; }
 
+    public string VideoFileName { get; set; } = "";
+
     [JsonIgnore]
     public string SvgUrl => $"/art-cache/{SvgFileName}";
 
     [JsonIgnore]
     public string ScreenshotUrl => $"/art-cache/{ScreenshotFileName}?v={GeneratedAt.Ticks}";
+
+    [JsonIgnore]
+    public string VideoUrl => $"/art-cache/{VideoFileName}?v={GeneratedAt.Ticks}";
+
+    [JsonIgnore]
+    public bool HasVideo => !string.IsNullOrEmpty(VideoFileName);
 }

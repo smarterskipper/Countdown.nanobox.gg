@@ -77,6 +77,20 @@ public class ArtCacheService
         OnArtGenerated?.Invoke(art);
     }
 
+    /// <summary>Save the animated MP4 for a day that already has a PNG cached.</summary>
+    public async Task SaveVideoAsync(DailyArt art, byte[] videoMp4)
+    {
+        var videoFile = $"{art.Date:yyyy-MM-dd}.mp4";
+        art.VideoFileName = videoFile;
+
+        await File.WriteAllBytesAsync(Path.Combine(_cacheDir, videoFile), videoMp4);
+        await File.WriteAllTextAsync(MetaPath(art.Date),
+            JsonSerializer.Serialize(art, new JsonSerializerOptions { WriteIndented = true }));
+
+        _logger.LogInformation("Cached video for {Date}", art.Date);
+        OnArtGenerated?.Invoke(art);
+    }
+
     public string? ReadSvgContent(DateOnly date)
     {
         var meta = GetArtForDate(date);
