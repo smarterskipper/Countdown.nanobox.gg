@@ -132,7 +132,8 @@ public partial class ArtGenerationService
 
         var metaPrompt = $"""
             You are an expert AI art director writing a detailed image generation prompt for Flux 1.1 Pro.
-            Your prompt must produce a breathtaking, museum-quality oil painting in the style of Bob Ross.
+            Your prompt must produce a breathtaking, museum-quality oil painting in the style of Bob Ross
+            that is OVERFLOWING with animals — both real and fantastical. Animals are the STAR of this painting.
 
             Painting subject:
             Holiday: {holiday.Name}
@@ -142,46 +143,54 @@ public partial class ArtGenerationService
             {weatherDesc}
             {critiqueNote}
 
-            Write a single dense image generation prompt (250–350 words) that:
+            CRITICAL RULE: The generated prompt MUST begin by listing ALL the animals explicitly by name
+            before describing anything else. Flux reads prompts left-to-right and weights the beginning
+            most heavily — so animals must come FIRST to guarantee they appear in the image.
 
-            1. STYLE: "Bob Ross 'Joy of Painting' oil painting style, thick impasto brushstrokes,
-               painterly, rich textured canvas, warm and atmospheric, PBS television aesthetic"
+            Write a single dense image generation prompt (300–400 words) structured in this exact order:
 
-            2. SCENE COMPOSITION (describe all of these):
-               - Sky: specific cloud formations, lighting conditions, time of day, sun/moon position
-               - Background: 2-3 mountain ridgelines receding into atmospheric haze
-               - Midground: dense evergreen forest with Bob Ross happy little trees
-               - Water: if applicable (lake, river, ocean) with reflections
-               - Foreground: rich ground detail — grass, wildflowers, rocks, fallen logs
-               - Cultural focal element: ONE iconic visual symbol from {holiday.CountryName}
-                 specific to {holiday.Name} (be specific and culturally accurate)
+            START WITH ANIMALS (first 120–150 words must be ONLY animals):
+            - Name every creature explicitly: "a golden dragon, a white unicorn, a glowing phoenix,
+              a silver wolf, a wise owl, a red fox, a giant sea turtle, a celestial elk with star antlers,
+              a griffin, a rainbow-scaled koi..." — list at least 8–12 creatures by species/description
+            - For each creature, state WHERE it is (foreground grass, mountain peak, sky, lake surface,
+              treetop, etc.) and WHAT it is doing (breathing fire, galloping, perching, swimming, etc.)
+            - Mix realistic wildlife with mythical/fantastical creatures — the wilder the better
+            - Make it feel like a magical Noah's Ark scene hidden inside a Bob Ross painting
 
-            3. WEATHER INTEGRATION: If weather was provided, describe how it visually appears
-               in the scene (rain streaks, snow on branches, dramatic storm clouds, etc.)
+            THEN describe the scene around the animals:
+            - STYLE: Bob Ross 'Joy of Painting' oil painting, thick impasto brushstrokes, rich textured
+              canvas, warm and atmospheric, PBS television aesthetic
+            - LANDSCAPE: mountains receding into haze, evergreen forest, water with reflections,
+              wildflower meadow foreground
+            - Cultural focal element from {holiday.CountryName} for {holiday.Name}
+            - {(weather is not null ? $"Weather: {weather.Description} visually shown in the scene" : "")}
+            - Bob Ross color palette by name: Phthalo Blue, Titanium White, Sap Green, Van Dyke Brown,
+              Cadmium Yellow, Alizarin Crimson, etc.
+            - Lighting quality (golden hour / moonlit / stormy / etc.)
 
-            4. COLOR PALETTE: Specify actual Bob Ross colors by name — Phthalo Blue, Titanium White,
-               Sap Green, Van Dyke Brown, Cadmium Yellow, Indian Yellow, Alizarin Crimson, etc.
+            END with quality tags:
+            "multiple fantastical creatures, animals everywhere, teeming with magical wildlife,
+            masterpiece, highly detailed, 8K resolution, award winning painting, no text, no watermarks"
 
-            5. LIGHTING: Describe the specific light quality — golden hour, overcast diffused,
-               moonlit, stormy dramatic, etc.
-
-            6. QUALITY TAGS at the end: "masterpiece, highly detailed, photorealistic painting,
-               8K resolution, professional artwork, no text, no watermarks, no signatures,
-               award winning landscape painting"
-
-            Output ONLY the image prompt text — no explanation, no title, no quotes around it.
+            Output ONLY the image prompt text — start immediately with the animal list, no preamble.
             """;
 
         var response = await _claude.Messages.GetClaudeMessageAsync(new MessageParameters
         {
             Messages = [new Message(RoleType.User, metaPrompt)],
             Model = AnthropicModels.Claude46Sonnet,
-            MaxTokens = 1024,
+            MaxTokens = 1536,
             Stream = false,
             Temperature = 0.9m
         });
 
-        return response.Content.OfType<TextContent>().FirstOrDefault()?.Text?.Trim() ?? holiday.Name;
+        var imagePrompt = response.Content.OfType<TextContent>().FirstOrDefault()?.Text?.Trim() ?? holiday.Name;
+
+        _logger.LogInformation("=== GENERATED FLUX PROMPT (attempt {Attempt}) ===\n{Prompt}\n=== END PROMPT ===",
+            attempt, imagePrompt);
+
+        return imagePrompt;
     }
 
     // ── Scoring ───────────────────────────────────────────────────────────────
@@ -229,6 +238,7 @@ public partial class ArtGenerationService
         });
 
         var json = response.Content.OfType<TextContent>().FirstOrDefault()?.Text ?? "{}";
+        _logger.LogInformation("=== SCORE RESPONSE ===\n{Json}\n=== END SCORE ===", json);
         return ParseScore(json);
     }
 
