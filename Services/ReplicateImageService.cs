@@ -133,7 +133,12 @@ public class ReplicateImageService
             new StringContent(body, Encoding.UTF8, "application/json"),
             ct);
 
-        createResp.EnsureSuccessStatusCode();
+        if (!createResp.IsSuccessStatusCode)
+        {
+            var errBody = await createResp.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException($"SVD create failed {(int)createResp.StatusCode}: {errBody}");
+        }
+
         var createJson = await createResp.Content.ReadAsStringAsync(ct);
         var createDoc = JsonDocument.Parse(createJson);
 
