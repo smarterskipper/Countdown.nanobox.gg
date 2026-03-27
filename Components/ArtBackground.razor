@@ -3,7 +3,8 @@
 
 @if (!string.IsNullOrEmpty(VideoUrl))
 {
-    <video class="art-bg-video" autoplay loop muted playsinline>
+    <video class="art-bg-video" autoplay loop muted playsinline
+           oncanplay="this.playbackRate=0.05">
         <source src="@VideoUrl" type="video/mp4">
     </video>
 }
@@ -21,11 +22,17 @@ else
 
     protected override bool ShouldRender()
     {
-        // Only re-render when the actual content changes, not on every clock tick
-        if (VideoUrl != _renderedVideoUrl || BgStyle != _renderedBgStyle)
+        if (VideoUrl != _renderedVideoUrl)
         {
             _renderedVideoUrl = VideoUrl;
             _renderedBgStyle  = BgStyle;
+            return true;
+        }
+        // Only re-render for BgStyle when no video is playing — BgStyle changes
+        // (e.g. gradient → image URL as art loads) must not recreate the video element
+        if (string.IsNullOrEmpty(VideoUrl) && BgStyle != _renderedBgStyle)
+        {
+            _renderedBgStyle = BgStyle;
             return true;
         }
         return false;
