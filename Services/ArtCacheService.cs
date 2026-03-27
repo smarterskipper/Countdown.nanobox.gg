@@ -8,6 +8,8 @@ public class ArtCacheService
     private readonly string _cacheDir;
     private readonly ILogger<ArtCacheService> _logger;
 
+    public string CacheDir => _cacheDir;
+
     public event Action<DailyArt>? OnArtGenerated;
 
     public ArtCacheService(IConfiguration config, ILogger<ArtCacheService> logger)

@@ -37,7 +37,16 @@ public partial class ArtGenerationService
         var existing = _cache.GetArtForDate(date);
         if (existing is not null)
         {
-            _logger.LogInformation("Art already cached for {Date}", date);
+            // If art exists but video wasn't generated yet, animate now
+            if (!existing.HasVideo)
+            {
+                _logger.LogInformation("Art cached for {Date} but no video — animating now", date);
+                await AnimateExistingAsync(existing);
+            }
+            else
+            {
+                _logger.LogInformation("Art already cached for {Date}", date);
+            }
             return existing;
         }
 
@@ -115,20 +124,45 @@ public partial class ArtGenerationService
         await _cache.SaveArtAsync(art, image!);
 
         // Animate the still image into a short looping video
-        _status.Update("Animating painting…", attempt, MaxAttempts, score?.Score);
-        try
-        {
-            var video = await _replicate.AnimateImageAsync(image!);
-            await _cache.SaveVideoAsync(art, video);
-            _logger.LogInformation("Video animation saved for {Date}", date);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Animation failed for {Date} — static image will be used", date);
-        }
+        await AnimateExistingAsync(art, image!);
 
         _status.Clear();
         return art;
+    }
+
+    // ── Animation ─────────────────────────────────────────────────────────────
+
+    /// <summary>Animate an existing art entry that has no video yet.</summary>
+    private async Task AnimateExistingAsync(DailyArt art, byte[]? imageBytes = null)
+    {
+        _status.Update("Animating painting…", 0, 0, null);
+        try
+        {
+            // Load the PNG from disk if not passed in
+            if (imageBytes is null)
+            {
+                var pngPath = Path.Combine(
+                    _cache.CacheDir,
+                    string.IsNullOrEmpty(art.ScreenshotFileName)
+                        ? $"{art.Date:yyyy-MM-dd}.png"
+                        : art.ScreenshotFileName);
+
+                if (!File.Exists(pngPath))
+                {
+                    _logger.LogWarning("No PNG found for {Date} at {Path} — skipping animation", art.Date, pngPath);
+                    return;
+                }
+                imageBytes = await File.ReadAllBytesAsync(pngPath);
+            }
+
+            var video = await _replicate.AnimateImageAsync(imageBytes);
+            await _cache.SaveVideoAsync(art, video);
+            _logger.LogInformation("Video animation saved for {Date}", art.Date);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Animation failed for {Date} — static image will be used", art.Date);
+        }
     }
 
     // ── Prompt builder ────────────────────────────────────────────────────────
