@@ -4,7 +4,7 @@
 html, body {
     height: 100%;
     overflow: hidden;
-    font-family: 'Roboto', system-ui, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Helvetica, Arial, sans-serif;
     background: #0f0f1a;
     color: #e2e8f0;
 }
@@ -251,12 +251,14 @@ body::before {
 }
 
 .topbar-brand {
-    font-size: 0.8rem;
-    font-weight: 500;
-    letter-spacing: 0.2em;
-    color: rgba(255,255,255,0.9);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    text-shadow: 0 1px 8px rgba(0,0,0,0.95), 0 2px 14px rgba(0,0,0,0.65);
+    background: linear-gradient(135deg, #bc8cff, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .topbar-links { display: flex; gap: 1.5rem; align-items: center; }
@@ -325,7 +327,7 @@ body::before {
 
 /* ── Days number ──────────────────────────────────────────────────────────── */
 .days-number {
-    font-family: 'Roboto', system-ui, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Helvetica, Arial, sans-serif;
     font-weight: 900;
     font-size: clamp(5rem, 22vw, 9rem);
     line-height: 0.95;
@@ -1374,10 +1376,10 @@ body:has(.gallery-page) {
 
 /* ── Live clock (HH:MM:SS) ────────────────────────────────────────────────── */
 .clock-display {
-    font-family: 'Roboto', monospace, system-ui;
+    font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
     font-size: clamp(1rem, 4vw, 1.5rem);
-    font-weight: 300;
-    letter-spacing: 0.18em;
+    font-weight: 400;
+    letter-spacing: 0.14em;
     color: rgba(255,255,255,0.9);
     text-shadow: 0 1px 8px rgba(0,0,0,0.95), 0 2px 20px rgba(0,0,0,0.7);
     margin-top: 0.1rem;

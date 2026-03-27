@@ -143,37 +143,47 @@ public partial class ArtGenerationService
             {weatherDesc}
             {critiqueNote}
 
-            CRITICAL RULE: The generated prompt MUST begin by listing ALL the animals explicitly by name
-            before describing anything else. Flux reads prompts left-to-right and weights the beginning
-            most heavily — so animals must come FIRST to guarantee they appear in the image.
-
             Write a single dense image generation prompt (300–400 words) structured in this exact order:
 
-            START WITH ANIMALS (first 120–150 words must be ONLY animals):
-            - Name every creature explicitly: "a golden dragon, a white unicorn, a glowing phoenix,
-              a silver wolf, a wise owl, a red fox, a giant sea turtle, a celestial elk with star antlers,
-              a griffin, a rainbow-scaled koi..." — list at least 8–12 creatures by species/description
-            - For each creature, state WHERE it is (foreground grass, mountain peak, sky, lake surface,
-              treetop, etc.) and WHAT it is doing (breathing fire, galloping, perching, swimming, etc.)
-            - Mix realistic wildlife with mythical/fantastical creatures — the wilder the better
-            - Make it feel like a magical Noah's Ark scene hidden inside a Bob Ross painting
+            1. STYLE: "Bob Ross 'Joy of Painting' oil painting style, thick impasto brushstrokes,
+               painterly, rich textured canvas, warm and atmospheric, PBS television aesthetic"
 
-            THEN describe the scene around the animals:
-            - STYLE: Bob Ross 'Joy of Painting' oil painting, thick impasto brushstrokes, rich textured
-              canvas, warm and atmospheric, PBS television aesthetic
-            - LANDSCAPE: mountains receding into haze, evergreen forest, water with reflections,
-              wildflower meadow foreground
-            - Cultural focal element from {holiday.CountryName} for {holiday.Name}
-            - {(weather is not null ? $"Weather: {weather.Description} visually shown in the scene" : "")}
-            - Bob Ross color palette by name: Phthalo Blue, Titanium White, Sap Green, Van Dyke Brown,
-              Cadmium Yellow, Alizarin Crimson, etc.
-            - Lighting quality (golden hour / moonlit / stormy / etc.)
+            2. SCENE COMPOSITION (describe all of these):
+               - Sky: specific cloud formations, lighting conditions, time of day, sun/moon position
+               - Background: 2-3 mountain ridgelines receding into atmospheric haze
+               - Midground: dense evergreen forest with Bob Ross happy little trees
+               - Water: if applicable (lake, river, ocean) with reflections
+               - Foreground: rich ground detail — grass, wildflowers, rocks, fallen logs
+               - Cultural focal element: ONE iconic visual symbol from {holiday.CountryName}
+                 specific to {holiday.Name} (be specific and culturally accurate)
 
-            END with quality tags:
-            "multiple fantastical creatures, animals everywhere, teeming with magical wildlife,
-            masterpiece, highly detailed, 8K resolution, award winning painting, no text, no watermarks"
+            3. WILDLIFE (REQUIRED — woven naturally into the scene):
+               Include 3–5 real animals that belong naturally in this landscape. They should feel like
+               you spotted them on a nature walk — subtle and believable, not cartoon or posed.
+               Examples: a deer grazing at the forest edge, a hawk circling overhead, a fox slipping
+               between trees, an owl perched half-hidden in a branch, fish visible under clear water,
+               a rabbit at the meadow's edge. Place each one specifically in the scene and describe
+               what it is doing. The animals should feel DISCOVERED, not announced.
 
-            Output ONLY the image prompt text — start immediately with the animal list, no preamble.
+               Hidden in the scene — nearly invisible unless you look closely — is ONE mythical creature
+               subtly camouflaged into a natural element: perhaps a dragon's silhouette mistaken for
+               a storm cloud, a unicorn half-hidden in mist at the forest edge, a sea serpent whose
+               back ripples look like waves, or a phoenix whose tail feathers blend into sunset colors.
+               Do NOT call it out — just place it naturally so a careful viewer might notice it.
+
+            4. WEATHER INTEGRATION: {(weather is not null ? $"Current weather: {weather.Description} — show this visually in the scene." : "Describe natural seasonal atmosphere.")}
+
+            5. COLOR PALETTE: Specify actual Bob Ross colors by name — Phthalo Blue, Titanium White,
+               Sap Green, Van Dyke Brown, Cadmium Yellow, Indian Yellow, Alizarin Crimson, etc.
+
+            6. LIGHTING: Describe the specific light quality — golden hour, overcast diffused,
+               moonlit, stormy dramatic, etc.
+
+            7. QUALITY TAGS at the end: "masterpiece, highly detailed, photorealistic painting,
+               8K resolution, professional artwork, no text, no watermarks, no signatures,
+               award winning landscape painting"
+
+            Output ONLY the image prompt text — no explanation, no title, no quotes around it.
             """;
 
         var response = await _claude.Messages.GetClaudeMessageAsync(new MessageParameters
