@@ -24,5 +24,5 @@ public class DailyArt
     public string SvgUrl => $"/art-cache/{SvgFileName}";
 
     [JsonIgnore]
-    public string ScreenshotUrl => $"/art-cache/{ScreenshotFileName}";
+    public string ScreenshotUrl => $"/art-cache/{ScreenshotFileName}?v={GeneratedAt.Ticks}";
 }
