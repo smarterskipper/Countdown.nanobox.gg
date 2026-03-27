@@ -40,7 +40,7 @@ public class ReplicateImageService
 
         var body = JsonSerializer.Serialize(new
         {
-            input = new { prompt, output_format = "png" }
+            input = new { prompt, aspect_ratio = "16:9", output_format = "png", output_quality = 100 }
         });
 
         var createResp = await _http.PostAsync(
