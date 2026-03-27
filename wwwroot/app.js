@@ -1,10 +1,10 @@
 window.artVideo = {
     _url: null,
     mount: function (url) {
-        if (this._url === url) return;
+        var existing = document.getElementById('art-bg-video');
+        if (this._url === url && existing) return;
         this._url = url;
 
-        var existing = document.getElementById('art-bg-video');
         if (existing) existing.remove();
         if (!url) return;
 
