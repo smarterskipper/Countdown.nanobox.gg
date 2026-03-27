@@ -429,11 +429,11 @@
         var particles = new List<string>();
         int count = w.Type switch
         {
-            "rain" or "storm" => 70,
-            "snow" => 45,
-            "sun" or "heat" => 20,
-            "aurora" => 15,
-            _ => 30
+            "rain" or "storm" => 30,
+            "snow" => 20,
+            "sun" or "heat" => 12,
+            "aurora" => 10,
+            _ => 15
         };
 
         for (int i = 0; i < count; i++)

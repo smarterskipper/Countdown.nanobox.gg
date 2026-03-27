@@ -101,11 +101,15 @@ body::before {
     z-index: 2;
     pointer-events: none;
     overflow: hidden;
+    transform: translateZ(0);
+    will-change: transform;
 }
 
 .weather-particle {
     position: absolute;
     border-radius: 50%;
+    will-change: transform, opacity;
+    transform: translateZ(0);
 }
 
 /* Rain */
