@@ -181,6 +181,32 @@ public partial class ArtGenerationService
             This must be the most detailed SVG painting ever created — extraordinarily rich,
             deeply layered, with photographic complexity achieved through pure SVG shapes.
 
+            ══════════════════════════════════════════════════════
+            ⚠ DRAW ORDER IS ABSOLUTE — SVG PAINTS LAST ELEMENT ON TOP
+            ══════════════════════════════════════════════════════
+            SVG renders elements in document order: the LAST element drawn is on TOP.
+            You MUST write elements in this exact back-to-front order or the scene breaks:
+
+              1. <defs> block (all gradients, filters — NO visible elements here)
+              2. Sky: gradient base, cloud layers, sun/moon, stars, atmospheric rects
+              3. Distant mountains (farthest first, nearest last within this group)
+              4. Atmospheric mist rects between mountain ranges
+              5. Background tree silhouettes (small, blurred, far away)
+              6. Water body (lake/river/ocean behind foreground trees)
+              7. Midground trees (medium size, slight blur)
+              8. Cultural focal element
+              9. Ground terrain base (the ground plane goes OVER the water edge)
+             10. Foreground large trees (NO blur — sharp, close-up)
+             11. Ground detail (grass, rocks, flowers, shadows — ON TOP of ground base)
+             12. Atmospheric particles (float over everything)
+             13. Holiday text (topmost)
+
+            NEVER place a shadow, oval, or dark shape AFTER the element it belongs under.
+            Shadows and dark base shapes are drawn FIRST, then the lit shapes on top.
+            Ground shadows go at step 9 base, NOT after step 10 trees.
+            Water reflections go INSIDE step 6, not after step 10.
+            ══════════════════════════════════════════════════════
+
             Holiday: {{holiday.Name}}
             Local Name: {{holiday.LocalName}}
             Country: {{holiday.CountryName}}
@@ -199,12 +225,23 @@ public partial class ArtGenerationService
             ═══ FILTERS — define ALL in <defs> ═══
             <filter id="soft-bg" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="7"/></filter>
             <filter id="soft-mid" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="3.5"/></filter>
-            <filter id="soft-fg" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="1.8"/></filter>
-            <filter id="soft-xfg" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="0.8"/></filter>
+            <filter id="soft-fg" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="1.5"/></filter>
             <filter id="glow-lg"><feGaussianBlur stdDeviation="12" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <filter id="glow"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <filter id="glow-sm"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <filter id="haze"><feGaussianBlur stdDeviation="18"/></filter>
+
+            ⚠ BLUR RULES — STRICT. Violating these makes the scene look broken:
+            • filter="url(#soft-bg)"  → ONLY: cloud groups, sky gradient overlays, very far mountain range (1st only), sun/moon corona
+            • filter="url(#soft-mid)" → ONLY: mountain ranges 2–5, water reflections, background tree silhouette groups
+            • filter="url(#soft-fg)"  → ONLY: background tree groups (small, far), mist/fog rects between ranges
+            • NO filter at all        → midground trees, foreground trees, ground shapes, rocks, grass, flowers, cultural elements, text
+            • filter="url(#glow-lg)"  → ONLY: sun/moon bright core
+            • filter="url(#glow)"     → ONLY: sun/moon inner glow, holiday text
+            • filter="url(#glow-sm)"  → ONLY: stars, fireflies, glowing particles, light dapples
+            • filter="url(#haze)"     → ONLY: wide horizon mist rects
+            NEVER apply blur to: individual tree ellipses in mid/foreground, ground terrain, grass blades,
+            rocks, flowers, cultural focal element, water shimmer strips, or any foreground shape.
 
             ═══ LAYER A — DEEP SKY ATMOSPHERE (280+ elements) ═══
 
@@ -288,20 +325,22 @@ public partial class ArtGenerationService
             Between each range pair: 2 atmospheric mist rects, opacity 0.04–0.09, filter="url(#haze)".
 
             ═══ LAYER C — DEEP FOREST TREELINE (280+ elements) ═══
-            Build 35 individual Bob Ross trees across the mid-ground. Each tree is:
+            Draw order within this layer: background trees FIRST, foreground trees LAST.
+            Build 35 individual Bob Ross trees. Write them in order: small far ones first.
 
-            SMALL BACKGROUND TREES (10 trees at y 300–360, scale 0.4–0.6):
-            Each = 6-ellipse stack:
+            SMALL BACKGROUND TREES (10 trees, drawn at step 5 — before water):
+            Position y 300–360, scale 0.4–0.6. Each = 6-ellipse stack:
               Base ellipse: rx 14 ry 18, Phthalo Green #0B3B1C
               Layer 2: rx 10 ry 14, mix Phthalo + Sap Green
               Layer 3: rx 7 ry 10, Sap Green #2C5A1C
               Layer 4: rx 4 ry 7, lighter Sap Green
               Highlight: rx 3 ry 8 offset left, Viridian #1A5C3A opacity 0.4
               Shadow: rx 3 ry 8 offset right, Midnight Black opacity 0.35
-            Trunk: rect w=2 h=8, Van Dyke Brown. Group: filter="url(#soft-mid)".
+            Trunk: rect w=2 h=8, Van Dyke Brown.
+            Group filter: filter="url(#soft-fg)" — these are far away so slight blur is ok.
 
-            MID TREES (15 trees at y 320–400, scale 0.7–1.0):
-            Each = 9-ellipse stack:
+            MID TREES (15 trees, drawn at step 7 — after water, before ground):
+            Position y 320–400, scale 0.7–1.0. Each = 9-ellipse stack:
               Layer 1: rx 26 ry 34, #0B3B1C
               Layer 2: rx 20 ry 26, blend #0B3B1C + #2C5A1C
               Layer 3: rx 15 ry 20, #2C5A1C
@@ -312,22 +351,23 @@ public partial class ArtGenerationService
               Right shadow: rx 4 ry 20 shifted +8, Midnight Black opacity 0.45
               Snow/frost optional: rx 8 ry 3 at top, white opacity 0.2
             Trunk: rect w=3 h=20, Van Dyke Brown + thin shadow rect.
-            Group: class="tree", filter="url(#soft-fg)".
+            Group: class="tree". NO blur filter — midground trees must be sharp.
 
-            FOREGROUND LARGE TREES (10 trees at y 360–480, scale 1.2–1.8):
-            Each = 12-ellipse stack for maximum detail:
+            FOREGROUND LARGE TREES (10 trees, drawn at step 10 — after ground base):
+            Position y 360–480, scale 1.2–1.8. Each = 12-ellipse stack:
               Base: rx 38 ry 50, Phthalo Green
               Layers 2–8: progressively smaller, lighter, spanning full height
               Left light face: 2 thin ellipses, Viridian → Sap Green, opacity 0.4–0.5
               Right dark face: 2 thin ellipses, Midnight Black opacity 0.4–0.5
               Bark texture: 3 thin vertical rects on trunk, varying brown shades
               Branch stubs: 4 small horizontal ellipses emerging from trunk sides
-            Trunk: rect w=6 h=40 + shadow rect w=2 h=40. filter="url(#soft-xfg)".
+            Trunk: rect w=6 h=40 + shadow rect w=2 h=40.
+            NO blur filter — foreground trees must be crisp and sharp.
 
-            Between all trees: fill gaps with:
-            - 20 bush/shrub clusters (3–4 small ellipses each, Sap Green)
-            - 15 low ground-cover ellipses (very flat, Phthalo Green, opacity 0.5–0.8)
-            - 10 fallen branch lines (thin paths, Van Dyke Brown)
+            Between mid/foreground trees: fill gaps with:
+            - 20 bush/shrub clusters (3–4 small ellipses each, Sap Green) — NO filter
+            - 15 low ground-cover ellipses (very flat, Phthalo Green, opacity 0.5–0.8) — NO filter
+            - 10 fallen branch lines (thin paths, Van Dyke Brown) — NO filter
 
             ═══ LAYER D — WATER BODY (140+ elements) ═══
             A lake, river, bay, or ocean fills the lower-center of the painting.
@@ -379,34 +419,43 @@ public partial class ArtGenerationService
             Whatever you build, use the full Bob Ross palette with glow effects on light sources.
 
             ═══ LAYER F — FOREGROUND TERRAIN (140+ elements) ═══
+            This entire layer is CLOSE UP. NO blur on any element here except glow-sm on light dapples.
+            Draw order within terrain: shadows/dark base → ground planes → rocks → grass → flowers → dapples.
 
-            Sub-layer F1 — Ground base (15 elements):
-            3 large irregular ground-plane paths spanning full width, layered:
+            Sub-layer F1 — Ground shadows first (10 elements):
+            ⚠ Draw these BEFORE any ground plane shapes (they are underneath):
+            Large dark shadow rect at very bottom, Midnight Black opacity 0.35 (depth anchor).
+            10 shadow pools cast by trees: irregular dark ellipses under each tree base,
+            Midnight Black opacity 0.20–0.35. Draw NOW so ground plane paints over the edges.
+            NO filter on shadows.
+
+            Sub-layer F2 — Ground base planes (15 elements):
+            3 large irregular ground-plane paths spanning full width, layered on top of shadows:
             Deep base: Van Dyke Brown → Midnight Black.
             Mid: Dark Sienna → Van Dyke Brown, opacity 0.85.
             Top surface: Yellow Ochre → Sap Green, opacity 0.7.
-            4 soil-texture paths, bumpy top edge, irregular colors.
+            4 soil-texture paths, bumpy top edge, irregular colors. NO filter.
 
-            Sub-layer F2 — Grass (60 elements):
+            Sub-layer F3 — Rocks (12 elements):
+            12 rocks: smooth rounded ellipse clusters (3 ellipses each), grey/brown tones.
+            NO blur filter — rocks are on the ground, they are close and should look sharp.
+            Some partially buried beneath ground plane (draw ground plane first, then rocks).
+
+            Sub-layer F4 — Grass (60 elements):
             60 individual grass cluster groups, each = 4–5 thin ellipses:
             Each ellipse: rx 1–3, ry 6–18, slightly tilted ±20deg, Sap Green.
             Vary opacity 0.4–0.95, vary height. class="grass" with staggered delays.
             Mix in 10 taller grass clumps (ry 25–40) as accent. Add Yellow Ochre dry grass.
-            Transform-origin at bottom of each cluster.
+            Transform-origin at bottom of each cluster. NO filter.
 
-            Sub-layer F3 — Ground detail (35 elements):
-            12 rocks: smooth rounded ellipse clusters (3 ellipses each), grey/brown tones.
-            filter="url(#soft-fg)". Some partially buried (clipped by ground rect).
-            8 root/log shapes: thin curved paths, Van Dyke Brown.
-            15 wildflowers: circle + 5 petal ellipses each, Bright Red / Cadmium Yellow.
-              Each flower: center circle r=3, 5 surrounding petal ellipses, class="float".
+            Sub-layer F5 — Wildflowers and details (25 elements):
+            8 root/log shapes: thin curved paths, Van Dyke Brown. NO filter.
+            15 wildflowers: center circle r=3 + 5 petal ellipses each, Bright Red / Cadmium Yellow.
+            Each flower group: NO filter, class="float" on petals with staggered delays.
 
-            Sub-layer F4 — Foreground shadow & depth (30 elements):
-            Large dark shadow rect at very bottom, Midnight Black opacity 0.4 (depth anchor).
-            10 shadow pools under trees: irregular dark ellipses, opacity 0.25–0.45.
-            8 light dapple patches: pale yellow ellipses on ground, opacity 0.08–0.15,
-              filter="url(#glow-sm)".
-            12 small pebble/dirt circles scattered on ground surface.
+            Sub-layer F6 — Light dapples (8 elements):
+            8 light dapple patches: pale yellow ellipses on ground, opacity 0.08–0.12.
+            These ONLY may use filter="url(#glow-sm)" — they are glowing light patches.
 
             ═══ LAYER G — ATMOSPHERIC PARTICLES (140+ elements) ═══
 
