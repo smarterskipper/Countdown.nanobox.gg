@@ -1,0 +1,21 @@
+name: Check Service Status
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Check logs and art cache
+    runs-on: self-hosted
+    steps:
+      - name: Art cache files
+        run: |
+          echo "=== Art cache (today) ==="
+          ls -lh /var/lib/homecountdown/art-cache/2026-03-2* 2>/dev/null || echo "no files"
+          echo ""
+          echo "=== 2026-03-26.json ==="
+          cat /var/lib/homecountdown/art-cache/2026-03-26.json 2>/dev/null || echo "not found"
+
+      - name: Service logs (last 60 lines)
+        run: |
+          sudo journalctl -u homecountdown -n 60 --no-pager
