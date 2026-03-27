@@ -48,10 +48,11 @@
             <div class="about-feature-body">
                 <div class="about-feature-title">The painting comes alive</div>
                 <div class="about-feature-desc">
-                    After each painting is generated, it's passed to Stable Video Diffusion —
-                    an AI that animates still images into short looping videos. Clouds drift,
-                    water ripples, trees sway. The background you see isn't a photo. It's a
-                    Bob Ross painting, breathing.
+                    After each painting is scored, it's passed to MiniMax Video 01 Live —
+                    an AI video model that animates still images into richly detailed looping videos.
+                    Water ripples, trees sway in the breeze, clouds drift across the sky.
+                    The background you see isn't a photo or a zoom effect. It's a Bob Ross
+                    painting, genuinely moving.
                 </div>
             </div>
         </div>
@@ -221,13 +222,15 @@
         <div class="about-pipeline-step">
             <div class="about-pipeline-num">06</div>
             <div class="about-pipeline-body">
-                <div class="about-pipeline-title">Stable Video Diffusion animates it</div>
+                <div class="about-pipeline-title">MiniMax Video animates it</div>
                 <div class="about-pipeline-desc">
-                    The winning PNG is uploaded to Replicate's file hosting, then passed to
-                    stability-ai/stable-video-diffusion. SVD generates 25 frames of subtle
-                    motion — clouds moving, water shimmering, light shifting — and encodes
-                    them as an MP4 at 6fps. The static image is replaced by the living video
-                    as soon as it's ready.
+                    The winning PNG is encoded as a base64 data URI and passed directly to
+                    minimax/video-01-live on Replicate. A motion prompt guides the model —
+                    water rippling, leaves swaying, clouds drifting — tuned to the painting's
+                    theme. MiniMax generates a high-quality looping MP4 with genuine scene
+                    motion, not just camera movement. The video is injected into the page via
+                    JavaScript, completely outside Blazor's render cycle so the per-second
+                    clock updates can never reset playback.
                 </div>
             </div>
         </div>
@@ -296,12 +299,15 @@
         </div>
 
         <div class="about-tech-block">
-            <div class="about-tech-block-name">Stable Video Diffusion (Stability AI via Replicate)</div>
+            <div class="about-tech-block-name">MiniMax Video 01 Live (via Replicate)</div>
             <div class="about-tech-block-desc">
-                SVD takes a single still image and generates a short video by predicting 25 frames
-                of realistic motion. The PNG is first uploaded to Replicate's file hosting API to get
-                a hosted URL, which is then passed as input to the model. The output is a looping MP4
-                served directly from the art cache and played in a full-screen HTML5 video element.
+                MiniMax Video 01 Live takes a single still image and generates a high-quality
+                video with genuine scene motion — not camera zoom, but actual water rippling,
+                foliage swaying, and sky movement. The PNG is passed as a base64 data URI directly
+                in the API request. The output MP4 is cached on disk and served as a full-screen
+                looping background. To survive Blazor's per-second re-renders, the video element
+                is created and managed entirely by a small JavaScript function in app.js — Blazor
+                never touches it after mount.
             </div>
         </div>
 
@@ -365,7 +371,7 @@
         <div class="about-section-label">Built with</div>
         <div class="about-tech-row">
             <span class="about-tech-chip">Flux 2 Pro</span>
-            <span class="about-tech-chip">Stable Video Diffusion</span>
+            <span class="about-tech-chip">MiniMax Video 01 Live</span>
             <span class="about-tech-chip">Claude Sonnet 4.6</span>
             <span class="about-tech-chip">Blazor Server</span>
             <span class="about-tech-chip">Replicate API</span>
