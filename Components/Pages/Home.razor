@@ -13,7 +13,16 @@
 <PageTitle>Countdown to August 5th</PageTitle>
 
 <!-- ── Full-screen art background ── -->
-<div class="art-bg" style="@ArtBgStyle"></div>
+@if (_art?.HasVideo == true)
+{
+    <video class="art-bg-video" autoplay loop muted playsinline>
+        <source src="@_art.VideoUrl" type="video/mp4">
+    </video>
+}
+else
+{
+    <div class="art-bg" style="@ArtBgStyle"></div>
+}
 
 <!-- ── April 1st special day overlay ── -->
 @if (_isSpecialDay)

@@ -113,6 +113,11 @@ public partial class ArtGenerationService
 
         _status.Update("Saving…", attempt, MaxAttempts, score?.Score);
         await _cache.SaveArtAsync(art, image!);
+
+        // Step 4: MiniMax Video animates the painting
+        _status.Update("Animating painting…", attempt, MaxAttempts, score?.Score);
+        await AnimateOnlyAsync(art, image!);
+
         _status.Clear();
         return art;
     }
@@ -142,7 +147,7 @@ public partial class ArtGenerationService
                 imageBytes = await File.ReadAllBytesAsync(pngPath);
             }
 
-            var video = await _replicate.AnimateImageAsync(imageBytes);
+            var video = await _replicate.AnimateImageAsync(imageBytes, art.Theme);
             await _cache.SaveVideoAsync(art, video);
             _logger.LogInformation("Video animation saved for {Date}", art.Date);
         }
