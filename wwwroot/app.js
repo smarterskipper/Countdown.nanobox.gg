@@ -15,33 +15,6 @@ window.artVideo = {
         v.loop = true;
         v.muted = true;
         v.setAttribute('playsinline', '');
-        v.style.transition = 'opacity 0.8s ease-in-out';
-
-        // Schedule precise crossfade at loop point using setTimeout
-        v.addEventListener('loadedmetadata', function () {
-            var fadeOut = 1.0;  // seconds before end to start fade out
-            var fadeIn  = 0.3;  // seconds after loop restart to start fade in
-
-            function cycle() {
-                if (document.getElementById('art-bg-video') !== v) return;
-                var msUntilFade = Math.max(0, (v.duration - fadeOut - v.currentTime) * 1000);
-
-                setTimeout(function () {
-                    if (document.getElementById('art-bg-video') !== v) return;
-                    v.style.opacity = '0';
-
-                    // Fade back in shortly after the loop restarts
-                    setTimeout(function () {
-                        if (document.getElementById('art-bg-video') !== v) return;
-                        v.style.opacity = '1';
-                        // Schedule the next cycle
-                        setTimeout(cycle, Math.max(0, (v.duration - fadeOut - fadeIn) * 1000));
-                    }, (fadeOut + fadeIn) * 1000);
-                }, msUntilFade);
-            }
-
-            cycle();
-        });
 
         var s = document.createElement('source');
         s.src = url;

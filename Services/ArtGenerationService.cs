@@ -148,7 +148,8 @@ public partial class ArtGenerationService
             }
 
             var video = await _replicate.AnimateImageAsync(imageBytes, art.Theme);
-            await _cache.SaveVideoAsync(art, video);
+            var loopedVideo = await MakePingPongAsync(video, art.Date, _cache.CacheDir);
+            await _cache.SaveVideoAsync(art, loopedVideo);
             _logger.LogInformation("Video animation saved for {Date}", art.Date);
         }
         catch (Exception ex)
@@ -162,6 +163,61 @@ public partial class ArtGenerationService
             }
             catch { /* don't let logging failure mask the real error */ }
         }
+    }
+
+    // ── Ping-pong loop ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Concatenates the video with its time-reversed copy so the loop is seamless:
+    /// forward → backward → forward → … with no visible cut.
+    /// Falls back to the original bytes if ffmpeg is unavailable or fails.
+    /// </summary>
+    private async Task<byte[]> MakePingPongAsync(byte[] mp4, DateOnly date, string dir)
+    {
+        var src = Path.Combine(dir, $"{date:yyyy-MM-dd}-raw.mp4");
+        var rev = Path.Combine(dir, $"{date:yyyy-MM-dd}-rev.mp4");
+        var out_ = Path.Combine(dir, $"{date:yyyy-MM-dd}-loop.mp4");
+        try
+        {
+            await File.WriteAllBytesAsync(src, mp4);
+
+            // Step 1: reverse
+            var r1 = await RunProcessAsync("ffmpeg",
+                $"-y -i \"{src}\" -vf reverse -an \"{rev}\"");
+            if (r1 != 0) throw new InvalidOperationException($"ffmpeg reverse exited {r1}");
+
+            // Step 2: concat original + reversed into seamless loop
+            var r2 = await RunProcessAsync("ffmpeg",
+                $"-y -i \"{src}\" -i \"{rev}\" -filter_complex \"[0:v][1:v]concat=n=2:v=1:a=0\" \"{out_}\"");
+            if (r2 != 0) throw new InvalidOperationException($"ffmpeg concat exited {r2}");
+
+            var result = await File.ReadAllBytesAsync(out_);
+            _logger.LogInformation("Ping-pong loop created for {Date} ({Kb} KB)", date, result.Length / 1024);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Ping-pong failed for {Date} — using raw video", date);
+            return mp4;
+        }
+        finally
+        {
+            foreach (var f in new[] { src, rev, out_ })
+                try { File.Delete(f); } catch { }
+        }
+    }
+
+    private static async Task<int> RunProcessAsync(string exe, string args)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo(exe, args)
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false
+        };
+        using var p = System.Diagnostics.Process.Start(psi)!;
+        await p.WaitForExitAsync();
+        return p.ExitCode;
     }
 
     // ── Prompt builder ────────────────────────────────────────────────────────
