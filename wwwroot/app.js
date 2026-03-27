@@ -16,6 +16,25 @@ window.artVideo = {
         v.muted = true;
         v.setAttribute('playsinline', '');
 
+        // Crossfade at loop point so the cut is invisible
+        var fadeDur = 0.9; // seconds to fade out before loop
+        var nearEnd = false;
+        v.style.transition = 'opacity 0.8s ease-in-out';
+
+        v.addEventListener('timeupdate', function () {
+            if (!v.duration) return;
+            var timeLeft = v.duration - v.currentTime;
+
+            if (timeLeft < fadeDur && !nearEnd) {
+                nearEnd = true;
+                v.style.opacity = '0';
+            } else if (timeLeft >= fadeDur && nearEnd) {
+                // Video has looped back to start
+                nearEnd = false;
+                v.style.opacity = '1';
+            }
+        });
+
         var s = document.createElement('source');
         s.src = url;
         s.type = 'video/mp4';
