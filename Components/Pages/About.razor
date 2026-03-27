@@ -44,12 +44,25 @@
         </div>
 
         <div class="about-feature">
+            <div class="about-feature-icon">🎬</div>
+            <div class="about-feature-body">
+                <div class="about-feature-title">The painting comes alive</div>
+                <div class="about-feature-desc">
+                    After each painting is generated, it's passed to Stable Video Diffusion —
+                    an AI that animates still images into short looping videos. Clouds drift,
+                    water ripples, trees sway. The background you see isn't a photo. It's a
+                    Bob Ross painting, breathing.
+                </div>
+            </div>
+        </div>
+
+        <div class="about-feature">
             <div class="about-feature-icon">🌤️</div>
             <div class="about-feature-body">
                 <div class="about-feature-title">Painted with real weather</div>
                 <div class="about-feature-desc">
                     Before each painting is created, the site checks the actual weather
-                    in Lehi, Utah in real time. Sunny skies, snow, thunderstorms, fog —
+                    in Lehi, Utah in real time via Open-Meteo. Sunny skies, snow, thunderstorms, fog —
                     whatever the weather is outside, it gets painted into the scene.
                     The art literally reflects the world right now.
                 </div>
@@ -62,9 +75,9 @@
                 <div class="about-feature-title">Your countdown, your timezone</div>
                 <div class="about-feature-desc">
                     The days, hours, minutes, and seconds shown are calculated in your
-                    local timezone — not the server's. Whether you're in California, New York,
-                    or anywhere else in the world, the clock counts down to midnight on August 5th
-                    exactly where you are.
+                    local timezone — not the server's. The browser sends its UTC offset
+                    on first load, and the countdown clock targets midnight on August 5th
+                    exactly where you are in the world.
                 </div>
             </div>
         </div>
@@ -135,17 +148,232 @@
 
     </div>
 
-    <!-- Built with -->
+    <!-- How it works -->
+    <div class="about-section-label">How it works</div>
+
+    <div class="about-pipeline">
+
+        <div class="about-pipeline-step">
+            <div class="about-pipeline-num">01</div>
+            <div class="about-pipeline-body">
+                <div class="about-pipeline-title">Find a holiday</div>
+                <div class="about-pipeline-desc">
+                    At midnight each day, the server queries a public holidays API to find
+                    every holiday being celebrated somewhere in the world on that date.
+                    One is selected — preference given to culturally rich, visually interesting ones.
+                </div>
+            </div>
+        </div>
+
+        <div class="about-pipeline-step">
+            <div class="about-pipeline-num">02</div>
+            <div class="about-pipeline-body">
+                <div class="about-pipeline-title">Check the weather</div>
+                <div class="about-pipeline-desc">
+                    Open-Meteo's free API is called for Lehi, Utah's current conditions.
+                    Temperature, precipitation, wind speed, and weather code are translated
+                    into a human-readable description — "light snow", "thunderstorm", "clear sky" —
+                    and tagged with an intensity value from 0 to 1.
+                </div>
+            </div>
+        </div>
+
+        <div class="about-pipeline-step">
+            <div class="about-pipeline-num">03</div>
+            <div class="about-pipeline-body">
+                <div class="about-pipeline-title">Claude writes the prompt</div>
+                <div class="about-pipeline-desc">
+                    Claude Sonnet 4.6 receives the holiday name, country, and weather data.
+                    It writes a 250–350 word image generation prompt that describes a full
+                    Bob Ross oil painting scene — sky, mountains, trees, water, cultural focal
+                    element, specific Bob Ross paint colors, and lighting. This prompt is
+                    purpose-built to get the best result out of Flux 2 Pro.
+                </div>
+            </div>
+        </div>
+
+        <div class="about-pipeline-step">
+            <div class="about-pipeline-num">04</div>
+            <div class="about-pipeline-body">
+                <div class="about-pipeline-title">Flux 2 Pro paints it</div>
+                <div class="about-pipeline-desc">
+                    The prompt is sent to Replicate's API where black-forest-labs/flux-2-pro
+                    renders a 1008×1008 PNG. Flux 2 Pro is one of the highest-quality
+                    diffusion models available, capable of photorealistic painterly output
+                    with precise prompt adherence. The image takes 30–90 seconds to generate.
+                </div>
+            </div>
+        </div>
+
+        <div class="about-pipeline-step">
+            <div class="about-pipeline-num">05</div>
+            <div class="about-pipeline-body">
+                <div class="about-pipeline-title">Claude scores the result</div>
+                <div class="about-pipeline-desc">
+                    The finished image is sent back to Claude Sonnet 4.6 as a vision input.
+                    Claude evaluates it on four axes: painterly quality, cultural accuracy,
+                    composition, and color. If the score is below 7.5 out of 10, a new attempt
+                    is made with a revised prompt. Up to 3 attempts are made; the best result wins.
+                </div>
+            </div>
+        </div>
+
+        <div class="about-pipeline-step">
+            <div class="about-pipeline-num">06</div>
+            <div class="about-pipeline-body">
+                <div class="about-pipeline-title">Stable Video Diffusion animates it</div>
+                <div class="about-pipeline-desc">
+                    The winning PNG is uploaded to Replicate's file hosting, then passed to
+                    stability-ai/stable-video-diffusion. SVD generates 25 frames of subtle
+                    motion — clouds moving, water shimmering, light shifting — and encodes
+                    them as an MP4 at 6fps. The static image is replaced by the living video
+                    as soon as it's ready.
+                </div>
+            </div>
+        </div>
+
+        <div class="about-pipeline-step">
+            <div class="about-pipeline-num">07</div>
+            <div class="about-pipeline-body">
+                <div class="about-pipeline-title">Everything is cached locally</div>
+                <div class="about-pipeline-desc">
+                    The PNG, MP4, weather JSON, and art metadata are all written to disk on
+                    the homelab server. The app never re-generates what it already has.
+                    The Gallery reads directly from this file cache — no database needed for art.
+                </div>
+            </div>
+        </div>
+
+        <div class="about-pipeline-step">
+            <div class="about-pipeline-num">08</div>
+            <div class="about-pipeline-body">
+                <div class="about-pipeline-title">Viewers are tracked in SQLite</div>
+                <div class="about-pipeline-desc">
+                    Every page load logs an IP address, which is geolocated using ip-api.com
+                    to a country and US state. These are aggregated and shown live in the sidebar
+                    and stored permanently so each gallery day shows exactly who watched that day.
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Tech stack deep dive -->
+    <div class="about-section-label">The tech stack</div>
+
+    <div class="about-tech-deep">
+
+        <div class="about-tech-block">
+            <div class="about-tech-block-name">Blazor Server (.NET 9)</div>
+            <div class="about-tech-block-desc">
+                The entire app — UI, real-time updates, background services — runs as a single
+                Blazor Server application. Components communicate over a persistent SignalR
+                WebSocket connection, so the countdown clock, live viewer list, and generation
+                status bar all update in real time without any JavaScript framework or API layer.
+                Hosted as a .NET systemd service inside a Proxmox LXC container.
+            </div>
+        </div>
+
+        <div class="about-tech-block">
+            <div class="about-tech-block-name">Claude Sonnet 4.6 (Anthropic)</div>
+            <div class="about-tech-block-desc">
+                Claude is used twice per day: first to write the image generation prompt
+                (text completion, temperature 0.9 for creativity), then to score the finished
+                image (vision input, temperature 0 for consistent judgment). The Anthropic .NET
+                SDK handles both calls. Claude's multimodal vision capability is what makes
+                the iterative scoring loop possible.
+            </div>
+        </div>
+
+        <div class="about-tech-block">
+            <div class="about-tech-block-name">Flux 2 Pro (black-forest-labs via Replicate)</div>
+            <div class="about-tech-block-desc">
+                Flux 2 Pro is a state-of-the-art text-to-image diffusion model from Black Forest Labs.
+                It's called via Replicate's REST API — a prediction is submitted, polled every 3 seconds,
+                and the output PNG is downloaded when complete. Flux 2 Pro was chosen over earlier
+                models for its photorealism, prompt adherence, and ability to render painterly textures.
+            </div>
+        </div>
+
+        <div class="about-tech-block">
+            <div class="about-tech-block-name">Stable Video Diffusion (Stability AI via Replicate)</div>
+            <div class="about-tech-block-desc">
+                SVD takes a single still image and generates a short video by predicting 25 frames
+                of realistic motion. The PNG is first uploaded to Replicate's file hosting API to get
+                a hosted URL, which is then passed as input to the model. The output is a looping MP4
+                served directly from the art cache and played in a full-screen HTML5 video element.
+            </div>
+        </div>
+
+        <div class="about-tech-block">
+            <div class="about-tech-block-name">Open-Meteo</div>
+            <div class="about-tech-block-desc">
+                Open-Meteo is a free, open-source weather API with no key required.
+                It's called with Lehi, Utah's coordinates each morning to fetch current temperature,
+                wind speed, precipitation, and WMO weather code. The weather code is mapped to one
+                of eight visual effect types (sun, rain, snow, storm, fog, wind, heat, aurora)
+                and an intensity value that controls particle count and behavior in the UI.
+            </div>
+        </div>
+
+        <div class="about-tech-block">
+            <div class="about-tech-block-name">SQLite (via EF Core)</div>
+            <div class="about-tech-block-desc">
+                Viewer tracking data lives in a local SQLite database. Each page view writes a row
+                with IP hash, country, US state, and timestamp. Entity Framework Core handles
+                migrations and queries. SQLite was chosen for simplicity — no server to manage,
+                file lives on disk alongside the art cache, survives container restarts.
+            </div>
+        </div>
+
+        <div class="about-tech-block">
+            <div class="about-tech-block-name">Proxmox + LXC</div>
+            <div class="about-tech-block-desc">
+                The app runs inside a Debian LXC container managed by Proxmox VE on a homelab server.
+                LXC containers are lightweight (less overhead than a full VM), share the host kernel,
+                and boot in seconds. The container gets a fixed IP on the home network and is
+                managed by a systemd service that restarts the app on failure.
+            </div>
+        </div>
+
+        <div class="about-tech-block">
+            <div class="about-tech-block-name">Cloudflare Tunnel</div>
+            <div class="about-tech-block-desc">
+                Rather than opening ports on the home router, a Cloudflare Tunnel
+                (cloudflared) runs inside the container and creates an outbound-only encrypted
+                connection to Cloudflare's edge. Public traffic hits Cloudflare, gets routed
+                through the tunnel to the app, and is served with full TLS — no port forwarding,
+                no DDoS exposure, no dynamic DNS required.
+            </div>
+        </div>
+
+        <div class="about-tech-block">
+            <div class="about-tech-block-name">GitHub Actions (CI/CD)</div>
+            <div class="about-tech-block-desc">
+                Every push to master triggers a GitHub Actions workflow that SSH's into the
+                homelab server, pulls the latest code, runs dotnet publish, copies the output
+                into the container via lxc-attach, and restarts the systemd service.
+                Environment variables (API keys, cache paths) are stored as GitHub Secrets
+                and written into a .env file on the server at deploy time.
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Built with chips -->
     <div class="about-built">
         <div class="about-section-label">Built with</div>
         <div class="about-tech-row">
             <span class="about-tech-chip">Flux 2 Pro</span>
+            <span class="about-tech-chip">Stable Video Diffusion</span>
             <span class="about-tech-chip">Claude Sonnet 4.6</span>
             <span class="about-tech-chip">Blazor Server</span>
             <span class="about-tech-chip">Replicate API</span>
             <span class="about-tech-chip">Open-Meteo</span>
+            <span class="about-tech-chip">SQLite + EF Core</span>
             <span class="about-tech-chip">Proxmox LXC</span>
             <span class="about-tech-chip">Cloudflare Tunnel</span>
+            <span class="about-tech-chip">GitHub Actions</span>
         </div>
         <p class="about-built-note">
             Running on a homelab server, painted fresh every day, counting down to one moment.
