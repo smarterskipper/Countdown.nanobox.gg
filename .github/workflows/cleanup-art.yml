@@ -21,7 +21,7 @@ jobs:
           DATE="${{ github.event.inputs.date }}"
           ART_DIR="/var/lib/homecountdown/art-cache"
           echo "Deleting art for $DATE..."
-          for f in "$ART_DIR/$DATE.json" "$ART_DIR/$DATE.svg" "$ART_DIR/$DATE.png" "$ART_DIR/weather-$DATE.json"; do
+          for f in "$ART_DIR/$DATE.json" "$ART_DIR/$DATE.svg" "$ART_DIR/$DATE.png" "$ART_DIR/$DATE.mp4" "$ART_DIR/weather-$DATE.json"; do
             if [ -f "$f" ]; then
               rm "$f"
               echo "  deleted: $f"
