@@ -467,6 +467,38 @@ body::before {
     50%       { opacity: 0.7; }
 }
 
+/* ── Date & weather line ──────────────────────────────────────────────────── */
+.date-weather-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-top: 0.15rem;
+}
+
+.date-weather-date {
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    opacity: 0.4;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.date-weather-sep {
+    opacity: 0.25;
+    font-size: 0.7rem;
+}
+
+.date-weather-condition {
+    font-size: 0.68rem;
+    opacity: 0.45;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* ── Generation status ────────────────────────────────────────────────────── */
 .gen-status {
     display: flex;

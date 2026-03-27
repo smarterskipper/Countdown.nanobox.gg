@@ -135,6 +135,14 @@
         @if (!_isHistorical)
         {
             <div class="clock-display">@_timeStr</div>
+            <div class="date-weather-line">
+                <span class="date-weather-date">@DateTime.Today.ToString("dddd, MMMM d")</span>
+                @if (_weather is not null)
+                {
+                    <span class="date-weather-sep">·</span>
+                    <span class="date-weather-condition">@WeatherIcon(_weather.Type) @_weather.Description</span>
+                }
+            </div>
         }
 
         <!-- Art attribution / generating state -->
@@ -470,6 +478,19 @@
         v.CountryCode == "US" && v.StateCode is not null
             ? $"https://flagcdn.com/w20/us-{v.StateCode.ToLower()}.png"
             : $"https://flagcdn.com/w20/{v.CountryCode.ToLower()}.png";
+
+    private static string WeatherIcon(string type) => type switch
+    {
+        "sun"   => "☀️",
+        "heat"  => "🌡️",
+        "rain"  => "🌧️",
+        "snow"  => "❄️",
+        "storm" => "⛈️",
+        "fog"   => "🌫️",
+        "wind"  => "💨",
+        "aurora"=> "🌌",
+        _       => "⛅"
+    };
 
     private string ArtBgStyle => _art is null
         ? "background: linear-gradient(135deg, #0f0f1a 0%, #1a1a3e 100%);"

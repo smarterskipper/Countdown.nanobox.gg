@@ -32,7 +32,7 @@ public partial class ArtGenerationService
         _logger = logger;
     }
 
-    public async Task<DailyArt> GenerateAndCacheAsync(DateOnly date, HolidayInfo holiday)
+    public async Task<DailyArt> GenerateAndCacheAsync(DateOnly date, HolidayInfo holiday, WeatherEffect? weather = null)
     {
         var existing = _cache.GetArtForDate(date);
         if (existing is not null)
@@ -59,7 +59,7 @@ public partial class ArtGenerationService
             _logger.LogInformation("Art generation attempt {Attempt}/{Max}", attempt, MaxAttempts);
             _status.Update($"Painting attempt {attempt} of {MaxAttempts}…", attempt, MaxAttempts, bestScore?.Score);
 
-            svg = await GenerateSvgAsync(holiday, critique, attempt);
+            svg = await GenerateSvgAsync(holiday, critique, attempt, weather);
 
             // ── Code review (advisory only — always render) ───────────────
             _status.Update($"Reviewing composition… (attempt {attempt})", attempt, MaxAttempts, bestScore?.Score);
@@ -128,11 +128,33 @@ public partial class ArtGenerationService
         return art;
     }
 
-    private async Task<string> GenerateSvgAsync(HolidayInfo holiday, string previousCritique, int attempt)
+    private async Task<string> GenerateSvgAsync(HolidayInfo holiday, string previousCritique, int attempt, WeatherEffect? weather = null)
     {
         var critiqueSection = attempt > 1 && !string.IsNullOrEmpty(previousCritique)
             ? $"\n\nIMPROVEMENT REQUIRED — previous critique: {previousCritique}\nAddress every point in this critique."
             : "";
+
+        var weatherSection = weather is not null
+            ? $"""
+
+              REAL WEATHER IN LEHI, UTAH RIGHT NOW:
+              Condition: {weather.Type} — {weather.Description}
+              Intensity: {weather.Intensity:F2} (0=calm, 1=extreme)
+              Color palette hint: {weather.Color}
+
+              Incorporate this weather VISUALLY into the painting as an extra atmospheric layer:
+              - "sun" / "heat": Strong sun disk, long golden god-rays, heat shimmer on ground
+              - "rain": Heavy rain streaks (60+ thin angled lines), dark clouds, wet ground reflections
+              - "snow": 50+ falling snowflakes, snow-capped trees, white ground cover
+              - "storm": Dramatic dark clouds, lightning bolt path, heavy rain, turbulent tree sway
+              - "fog": Dense fog layers (opacity 0.15–0.30), muted colors, reduced visibility
+              - "wind": Bent trees (increased sway animation), streaking horizontal cloud wisps
+              - "cloud": Overcast sky, soft diffused light, grey cloud dominance
+              - "aurora": Northern lights curtains (multi-color gradient rects, animated shimmer)
+              The weather must be unmistakably visible in the painting.
+              """
+            : "";
+
 
         // Bob Ross color palette mapped to hex
         const string palette = """
@@ -155,191 +177,313 @@ public partial class ArtGenerationService
             """;
 
         var prompt = $$"""
-            You are painting a Bob Ross "Joy of Painting" style SVG landscape for:
+            You are painting a museum-quality Bob Ross "Joy of Painting" SVG landscape.
+            This must be the most detailed SVG painting ever created — extraordinarily rich,
+            deeply layered, with photographic complexity achieved through pure SVG shapes.
 
             Holiday: {{holiday.Name}}
             Local Name: {{holiday.LocalName}}
             Country: {{holiday.CountryName}}
             Date: {{holiday.Date:MMMM d, yyyy}}
             {{critiqueSection}}
+            {{weatherSection}}
 
             {{palette}}
 
-            ═══ CORE REQUIREMENT: DENSITY & DETAIL ═══
-            This painting MUST contain AT LEAST 200 individual SVG elements (paths, rects,
-            ellipses, polygons, text). Count every shape. A cluster of trees = 15–25 shapes.
-            A sky = 30+ overlapping cloud ellipses. A mountain range = 8–12 path segments.
-            DO NOT produce sparse art. Every region of the canvas must be richly layered.
+            ═══ ABSOLUTE MINIMUM: 1,400 SVG ELEMENTS ═══
+            Count every <ellipse>, <rect>, <path>, <circle>, <polygon>, <line>, <text>.
+            If your painting has fewer than 1,400 elements it is INCOMPLETE. Keep painting.
+            Every square pixel of canvas must be covered by richly layered shapes.
+            Sparse areas = failure. Stack 8–15 overlapping shapes per region minimum.
 
-            ═══ GAUSSIAN BLUR IS MANDATORY ═══
-            Bob Ross oil painting = soft, blended, zero hard edges. Achieve this with:
-
-            Define these filters in <defs>:
-            <filter id="soft-bg"><feGaussianBlur stdDeviation="6"/></filter>
-            <filter id="soft-mid"><feGaussianBlur stdDeviation="3"/></filter>
-            <filter id="soft-fg"><feGaussianBlur stdDeviation="1.5"/></filter>
-            <filter id="glow"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            ═══ FILTERS — define ALL in <defs> ═══
+            <filter id="soft-bg" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="7"/></filter>
+            <filter id="soft-mid" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="3.5"/></filter>
+            <filter id="soft-fg" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="1.8"/></filter>
+            <filter id="soft-xfg" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="0.8"/></filter>
+            <filter id="glow-lg"><feGaussianBlur stdDeviation="12" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="glow"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <filter id="glow-sm"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="haze"><feGaussianBlur stdDeviation="18"/></filter>
 
-            Apply filter rules:
-            • Sky gradients, distant haze: filter="url(#soft-bg)"
-            • All mountains/hills: filter="url(#soft-mid)"
-            • All tree groups: filter="url(#soft-fg)"
-            • Sun/moon/light source: filter="url(#glow)"
-            • Stars, particles, fireflies: filter="url(#glow-sm)"
-            • Water reflections: filter="url(#soft-mid)"
+            ═══ LAYER A — DEEP SKY ATMOSPHERE (280+ elements) ═══
 
-            ═══ LAYER 1 — SKY (40+ elements) ═══
-            Build sky from scratch using ONLY gradients and overlapping shapes — no flat fill:
+            Sub-layer A1 — Sky gradient base (8 elements):
+            Full-canvas rect with 8-stop linearGradient (y1=0% y2=100%):
+            stops: deep indigo #0D1B40 0%, Prussian Blue #1C3A5E 20%, slate blue #2A4A6E 38%,
+            soft blue-grey #4A6A8E 52%, warm peach-grey #8A7060 68%, golden #C8801A 82%,
+            warm amber #E08B0C 92%, pale gold #F5C400 100%.
+            Layer 3 more gradient rects at opacity 0.12–0.25 for atmospheric bands.
 
-            Base sky: tall linearGradient, 5+ color stops from deep blue/purple at top
-            to warm golden/peach at horizon. Apply to full-canvas rect.
+            Sub-layer A2 — Cirrus clouds (60 elements):
+            Long wispy streaks: 20 thin ellipses (rx 80–180, ry 4–12) near top of sky.
+            Color: Titanium White #F4F1E8 opacity 0.06–0.18. Slightly rotated (±8deg).
+            Group in <g class="cloud" filter="url(#soft-bg)"> with staggered delays.
+            Add 40 more tiny cirrus wisps (rx 20–60, ry 2–6) at opacity 0.04–0.12.
 
-            Cloud masses (25–35 overlapping ellipses per cloud formation):
-            Each cloud = a cluster of rx 30–120, ry 20–60 ellipses at opacity 0.08–0.35.
-            Use Titanium White, with occasional pale Prussian Blue for shadow undersides.
-            Stagger across entire sky width. Apply filter="url(#soft-bg)" to each group.
+            Sub-layer A3 — Cumulus cloud banks (120 elements):
+            Build 4 major cloud formations, each = 30 overlapping ellipses:
+            Formation 1 (top-left): ellipses scattered cx 50–250, cy 60–130.
+              Core: 8 large ellipses rx 60–120, ry 35–65, White opacity 0.18–0.30.
+              Mid: 12 medium rx 30–70, ry 20–40 opacity 0.10–0.20.
+              Wisp edges: 10 small rx 10–30, ry 8–18 opacity 0.05–0.12.
+            Formation 2 (top-right): cx 650–850, cy 40–110. Same 30-ellipse structure.
+            Formation 3 (mid-left): cx 100–350, cy 120–170. Flatter, more horizontal.
+            Formation 4 (mid-right): cx 550–800, cy 100–160. Flatter formation.
+            All cloud groups: filter="url(#soft-bg)" class="cloud".
+            Add Prussian Blue shadow ellipses on underside of each cloud, opacity 0.08–0.15.
 
-            Sun OR moon (choose one based on holiday mood):
-            Sun: radial gradient center (Cadmium Yellow → Indian Yellow → transparent),
-            large outer glow circle at opacity 0.15, medium at 0.3, bright core.
-            Moon: similar but Titanium White → cool Prussian Blue glow.
-            Add god-rays: 6–10 thin wedge/line shapes radiating outward at opacity 0.06–0.12.
+            Sub-layer A4 — Light source (40 elements):
+            Sun or Moon based on holiday mood — centered at roughly cx=680, cy=90:
+            Outer corona: 6 concentric circles radii 120→60, radialGradient transparent→color, opacity 0.04→0.12.
+            Inner glow: circle r=45, radialGradient core color→transparent, filter="url(#glow-lg)".
+            Bright core: circle r=22, solid color, filter="url(#glow)".
+            God-rays: 14 thin wedge paths (polygon) radiating out, length 180–280px,
+              width 8–25px at base tapering to 0, opacity 0.03–0.09, class="sun-glow".
+            Atmospheric ring: 3 ellipses rx 200–350 around sun at opacity 0.04–0.08.
+            If night: add 60 stars — mix of plain circles r 0.8–2 and glowing circles
+              with radialGradient, scattered across sky, class="flicker", filter="url(#glow-sm)".
 
-            Stars (if night): 20–30 small circles, radius 0.8–2.5, Titanium White,
-            some with tiny radialGradient glow. class="flicker" with staggered delays.
+            Sub-layer A5 — Sky depth layers (52 elements):
+            6 large gradient rects spanning full width at different sky heights:
+              Each at opacity 0.03–0.07, warm/cool tones for atmospheric perspective.
+            Horizon glow band: 4 wide rects near y=290–340, warm peach/gold, opacity 0.08–0.15,
+              filter="url(#haze)".
+            8 more scattered cloud wisps at horizon, compressed flat, opacity 0.06–0.14.
 
-            ═══ LAYER 2 — DISTANT MOUNTAINS (30+ elements) ═══
-            Three distinct ridgelines at different depths:
+            ═══ LAYER B — MOUNTAIN RANGES (280+ elements) ═══
+            Seven distinct ridgelines from farthest to nearest. Each deeper = darker + more detail.
 
-            Far range (lightest, highest): irregular polygon path with gentle peaks,
-            fill: linearGradient (Prussian Blue tint → fog white at base), opacity 0.5–0.6.
-            filter="url(#soft-bg)". Snow caps: white ellipses at peak tips.
+            Range 1 — Ultraviolet far range (y peaks 140–180):
+            Cubic bezier path with 18 control points. Color: linearGradient #E8EAF0 op 0.18 → #C8D0D8 op 0.
+            4 snow cap ellipses at tallest peaks, white, opacity 0.35. filter="url(#soft-bg)".
 
-            Mid range: richer Prussian Blue → Dark Sienna gradient, opacity 0.75.
-            filter="url(#soft-mid)". More dramatic peaks. Shadow sides darker.
+            Range 2 — Pale haze range (y peaks 155–200):
+            22-point bezier. Prussian Blue + 40% white mix at top → transparent at base.
+            6 snow ellipses. 8 tiny shadow triangles on steep faces. filter="url(#soft-bg)".
 
-            Near range: Van Dyke Brown → Phthalo Green gradient, opacity 0.9.
-            filter="url(#soft-mid)". Visible texture. Tree-line silhouette at base.
+            Range 3 — Blue-grey mid-far (y peaks 170–230):
+            25-point bezier. #1C3A5E → #2A4A6E gradient. Opacity 0.55.
+            10 snow/ice ellipses. 5 avalanche-scar pale streaks (thin paths). filter="url(#soft-mid)".
 
-            Each range = irregular cubic-bezier path with 8–15 control points.
-            Overlap ranges so near obscures far at edges.
+            Range 4 — Slate mid range (y peaks 190–260):
+            28-point bezier. Prussian Blue → Dark Sienna blend. Opacity 0.72.
+            12 snow ellipses, 8 rock-face shadow paths, 4 mist wisps at base. filter="url(#soft-mid)".
 
-            ═══ LAYER 3 — TREES (60+ elements, the Bob Ross signature) ═══
-            Bob Ross evergreen trees are built like this in SVG:
+            Range 5 — Dark mid-near (y peaks 210–290):
+            30-point bezier. Van Dyke Brown → Phthalo Green → Midnight Black gradient. Opacity 0.82.
+            8 exposed cliff face paths (lighter rocky grey). 15 small tree-silhouette bumps along ridge.
+            6 shadow valley fills. filter="url(#soft-mid)".
 
-            ONE TREE = stacked teardrop/diamond shapes, largest at bottom, smallest at top:
-            <ellipse cx="X" cy="Y+40" rx="22" ry="28" fill="Phthalo Green blend"/>
-            <ellipse cx="X" cy="Y+20" rx="16" ry="22" fill="slightly lighter green"/>
-            <ellipse cx="X" cy="Y"    rx="11" ry="16" fill="lighter still"/>
-            <ellipse cx="X" cy="Y-15" rx="7"  ry="11" fill="tip, lightest"/>
-            Highlight side: one thin ellipse at 30% width, opacity 0.35, Sap Green or Viridian.
-            Dark side: one thin ellipse at 70% width, opacity 0.4, Midnight Black.
+            Range 6 — Near hills left & right flanking (2 separate paths, y 260–340):
+            Each = 20-point bezier, Phthalo Green → Van Dyke Brown. Opacity 0.88.
+            Each hill: 12 tree silhouettes along crest, 6 rock shadows, 4 bright highlight paths.
+            filter="url(#soft-mid)".
 
-            Build 8–12 individual trees this way, varying heights (80–200px tall).
-            Group each tree in <g class="tree" style="animation-delay:Xs transform-origin:centerX bottomY">
-            Cluster trees in groups: 3 left side, 4 center-left, 5 center-right, 3 right.
-            Apply filter="url(#soft-fg)" to each tree group.
-            Trunk: thin brown rect under each tree, Van Dyke Brown.
+            Range 7 — Immediate background ridge (y 290–360):
+            Richest detail. 35-point bezier, near-black at peaks → brown-green at base.
+            20 individual tree silhouette ellipses along the skyline. 10 rock formations.
+            8 highlight paths on sun-facing slopes. filter="url(#soft-fg)".
 
-            ═══ LAYER 4 — WATER (if applicable, 20+ elements) ═══
-            Lake, river, or ocean using horizontal gradient bands:
-            Base: linearGradient reflecting sky colors (Phthalo Blue → Prussian Blue → sky tones).
-            20–25 thin horizontal rect strips (height 2–6px) at varying opacity 0.1–0.45,
-            alternating between highlight (Titanium White tint) and shadow (Phthalo Blue).
-            class="shimmer" on each strip with staggered animation-delay 0s–3s.
-            Reflections: blurred vertical smear versions of trees/mountains, opacity 0.25–0.4.
-            filter="url(#soft-mid)" on reflection group.
-            Shore line: curved path, Yellow Ochre → Van Dyke Brown gradient.
+            Between each range pair: 2 atmospheric mist rects, opacity 0.04–0.09, filter="url(#haze)".
 
-            ═══ LAYER 5 — CULTURAL ELEMENTS ═══
-            ONE prominent feature specific to {{holiday.CountryName}} and {{holiday.Name}}:
-            This is what makes the painting unique. Examples:
-            - Cherry blossoms: 40+ small petal shapes (class="float")
-            - Lanterns: glowing rounded rectangles with glow filter
-            - Traditional architecture silhouette: complex path
-            - Desert dunes: layered smooth curves
-            - Tropical palm trees: fan-shaped fronds
-            Make this element the visual focal point, centered or slightly off-center.
-            Use bright accent colors from the palette to make it pop.
+            ═══ LAYER C — DEEP FOREST TREELINE (280+ elements) ═══
+            Build 35 individual Bob Ross trees across the mid-ground. Each tree is:
 
-            ═══ LAYER 6 — FOREGROUND GROUND (20+ elements) ═══
-            Rich ground plane built from overlapping shapes:
-            Base ground: large irregular path, Dark Sienna → Van Dyke Brown gradient.
-            Grass: 15–20 thin blade clusters, Sap Green varying opacity 0.5–0.9.
-              Each cluster = 3–5 thin ellipses tilted ±15deg. class="grass" staggered delays.
-            Ground texture: 8–10 small irregular patches, Yellow Ochre / Van Dyke Brown.
-            Rocks (optional): smooth grey ellipses at ground line, filter="url(#soft-fg)".
-            Wildflowers: 10–15 tiny colored dots/circles (Bright Red, Cadmium Yellow).
+            SMALL BACKGROUND TREES (10 trees at y 300–360, scale 0.4–0.6):
+            Each = 6-ellipse stack:
+              Base ellipse: rx 14 ry 18, Phthalo Green #0B3B1C
+              Layer 2: rx 10 ry 14, mix Phthalo + Sap Green
+              Layer 3: rx 7 ry 10, Sap Green #2C5A1C
+              Layer 4: rx 4 ry 7, lighter Sap Green
+              Highlight: rx 3 ry 8 offset left, Viridian #1A5C3A opacity 0.4
+              Shadow: rx 3 ry 8 offset right, Midnight Black opacity 0.35
+            Trunk: rect w=2 h=8, Van Dyke Brown. Group: filter="url(#soft-mid)".
 
-            ═══ LAYER 7 — PARTICLES & ATMOSPHERE (20+ elements) ═══
-            Floating particles appropriate to holiday/season:
-            • 15–20 small shapes (petals, embers, fireflies, snowflakes, sparks)
-            • Distributed across full canvas, not just one area
-            • Each with class="float" and unique animation-delay (0s–8s)
-            • filter="url(#glow-sm)" on warm-colored particles
-            • Vary sizes: radius 1.5–6px
+            MID TREES (15 trees at y 320–400, scale 0.7–1.0):
+            Each = 9-ellipse stack:
+              Layer 1: rx 26 ry 34, #0B3B1C
+              Layer 2: rx 20 ry 26, blend #0B3B1C + #2C5A1C
+              Layer 3: rx 15 ry 20, #2C5A1C
+              Layer 4: rx 11 ry 15, lighter #2C5A1C
+              Layer 5: rx 7 ry 11, Viridian
+              Layer 6: rx 4 ry 7, tip Viridian + Yellow
+              Left highlight: rx 4 ry 20 shifted -8, Sap Green opacity 0.45
+              Right shadow: rx 4 ry 20 shifted +8, Midnight Black opacity 0.45
+              Snow/frost optional: rx 8 ry 3 at top, white opacity 0.2
+            Trunk: rect w=3 h=20, Van Dyke Brown + thin shadow rect.
+            Group: class="tree", filter="url(#soft-fg)".
 
-            Atmospheric haze: 3–4 large semi-transparent horizontal gradient rects at
-            opacity 0.04–0.08 across sky-land boundary for depth of field.
+            FOREGROUND LARGE TREES (10 trees at y 360–480, scale 1.2–1.8):
+            Each = 12-ellipse stack for maximum detail:
+              Base: rx 38 ry 50, Phthalo Green
+              Layers 2–8: progressively smaller, lighter, spanning full height
+              Left light face: 2 thin ellipses, Viridian → Sap Green, opacity 0.4–0.5
+              Right dark face: 2 thin ellipses, Midnight Black opacity 0.4–0.5
+              Bark texture: 3 thin vertical rects on trunk, varying brown shades
+              Branch stubs: 4 small horizontal ellipses emerging from trunk sides
+            Trunk: rect w=6 h=40 + shadow rect w=2 h=40. filter="url(#soft-xfg)".
 
-            ═══ ANIMATION (define ALL in <style>) ═══
-            @keyframes sway {
-              0%,100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); }
-            }
-            @keyframes grass-wave {
-              0%,100% { transform: skewX(-3deg) scaleY(0.97); } 50% { transform: skewX(3deg) scaleY(1.03); }
-            }
-            @keyframes shimmer {
-              0%,100% { opacity: 0.15; } 50% { opacity: 0.45; }
-            }
-            @keyframes cloud-drift {
-              0%,100% { transform: translateX(-6px); } 50% { transform: translateX(6px); }
-            }
-            @keyframes flicker {
-              0%,100% { opacity: 0.5; } 33% { opacity: 1.0; } 66% { opacity: 0.7; }
-            }
-            @keyframes float {
-              0% { transform: translateY(0) translateX(0); opacity: 0.8; }
-              50% { transform: translateY(-18px) translateX(6px); opacity: 1; }
-              100% { transform: translateY(-35px) translateX(-4px); opacity: 0; }
-            }
-            @keyframes sun-pulse {
-              0%,100% { opacity: 0.85; filter: blur(6px); }
-              50% { opacity: 1.0; filter: blur(9px); }
-            }
-            @keyframes water-glow {
-              0%,100% { opacity: 0.2; } 50% { opacity: 0.5; }
-            }
+            Between all trees: fill gaps with:
+            - 20 bush/shrub clusters (3–4 small ellipses each, Sap Green)
+            - 15 low ground-cover ellipses (very flat, Phthalo Green, opacity 0.5–0.8)
+            - 10 fallen branch lines (thin paths, Van Dyke Brown)
 
-            .tree { animation: sway ease-in-out infinite; }
-            .grass { animation: grass-wave ease-in-out infinite; transform-origin: bottom; }
-            .shimmer { animation: shimmer ease-in-out infinite; }
-            .cloud { animation: cloud-drift ease-in-out infinite; }
-            .flicker { animation: flicker ease-in-out infinite; }
-            .float { animation: float ease-in-out infinite; }
-            .sun-glow { animation: sun-pulse ease-in-out infinite; }
+            ═══ LAYER D — WATER BODY (140+ elements) ═══
+            A lake, river, bay, or ocean fills the lower-center of the painting.
 
-            Apply unique animation-delay (0s to 6s) as inline style on EVERY animated element.
-            Apply unique animation-duration variation (±20%) as inline style for organic feel.
+            Sub-layer D1 — Water base (20 elements):
+            Base rect with 6-stop linearGradient (sky reflection): deep Phthalo Blue → Prussian Blue → grey-blue.
+            4 large irregular path overlays for water color variation, opacity 0.15–0.30.
+
+            Sub-layer D2 — Shimmer strips (70 elements):
+            70 horizontal rects stacked y=380–520, each h=2–5px, full width or partial:
+            Odd strips: Titanium White opacity 0.05–0.18, class="shimmer" staggered.
+            Even strips: Phthalo Blue opacity 0.08–0.20.
+            Every 5th strip: slightly wider, Indian Yellow tint for golden reflections.
+
+            Sub-layer D3 — Mountain reflections (25 elements):
+            Mirror the mountain ridgelines: 7 blurred inverted mountain-shape paths,
+            each progressively more distorted and horizontal-stretched.
+            Opacity 0.12–0.28, filter="url(#soft-mid)". class="shimmer".
+
+            Sub-layer D4 — Tree reflections (15 elements):
+            15 blurred vertical ellipses beneath each tree cluster,
+            Phthalo Green tones, stretched 2× vertically, opacity 0.15–0.22.
+            filter="url(#soft-mid)".
+
+            Sub-layer D5 — Shore & foam (10 elements):
+            2 irregular shore-line paths, Yellow Ochre → Van Dyke Brown.
+            5 foam/wave edge paths, Titanium White opacity 0.3–0.5, filter="url(#soft-fg)".
+            3 wet-sand reflection rects near shore, pale gold, opacity 0.15.
+
+            ═══ LAYER E — CULTURAL FOCAL ELEMENT (100+ elements) ═══
+            The painting's unique centerpiece celebrating {{holiday.Name}} in {{holiday.CountryName}}.
+            This must be RICHLY detailed — not a simple shape. Build it from 100+ sub-elements.
+            Position as the visual focal point (center or golden-ratio offset).
+
+            Examples of how to build with 100+ elements:
+            CHERRY BLOSSOMS: 1 tree trunk (8 branch paths) + 80 petal ellipses in clusters
+              of 5–8 per branch node, 4 colors (pink shades), class="float", glow filter.
+              Plus 20 fallen petals on ground drifting.
+            LANTERNS: 5 lanterns each = 12 shapes (body, top cap, bottom cap, 4 glow rings,
+              2 tassel segments, 2 string segments, glow circle). Plus 40 scattered spark particles.
+            TEMPLE/PAGODA: Multi-path silhouette with 5 roof tiers (each = 4 paths),
+              walls, windows, gate, stone steps, garden elements = 80+ paths.
+              Plus 20 surrounding elements (stone lanterns, bonsai, petals).
+            NORTHERN LIGHTS (Aurora): 8 curtain shapes each = 12 gradient rects stacked,
+              plus 30 star specks, 20 ground reflection ripples.
+            DESERT/DUNES: 12 dune layers × 6 overlapping bezier paths each = 72 paths,
+              plus 15 cactus shapes, 10 scattered rocks, 8 sand texture ellipses.
+
+            Whatever you build, use the full Bob Ross palette with glow effects on light sources.
+
+            ═══ LAYER F — FOREGROUND TERRAIN (140+ elements) ═══
+
+            Sub-layer F1 — Ground base (15 elements):
+            3 large irregular ground-plane paths spanning full width, layered:
+            Deep base: Van Dyke Brown → Midnight Black.
+            Mid: Dark Sienna → Van Dyke Brown, opacity 0.85.
+            Top surface: Yellow Ochre → Sap Green, opacity 0.7.
+            4 soil-texture paths, bumpy top edge, irregular colors.
+
+            Sub-layer F2 — Grass (60 elements):
+            60 individual grass cluster groups, each = 4–5 thin ellipses:
+            Each ellipse: rx 1–3, ry 6–18, slightly tilted ±20deg, Sap Green.
+            Vary opacity 0.4–0.95, vary height. class="grass" with staggered delays.
+            Mix in 10 taller grass clumps (ry 25–40) as accent. Add Yellow Ochre dry grass.
+            Transform-origin at bottom of each cluster.
+
+            Sub-layer F3 — Ground detail (35 elements):
+            12 rocks: smooth rounded ellipse clusters (3 ellipses each), grey/brown tones.
+            filter="url(#soft-fg)". Some partially buried (clipped by ground rect).
+            8 root/log shapes: thin curved paths, Van Dyke Brown.
+            15 wildflowers: circle + 5 petal ellipses each, Bright Red / Cadmium Yellow.
+              Each flower: center circle r=3, 5 surrounding petal ellipses, class="float".
+
+            Sub-layer F4 — Foreground shadow & depth (30 elements):
+            Large dark shadow rect at very bottom, Midnight Black opacity 0.4 (depth anchor).
+            10 shadow pools under trees: irregular dark ellipses, opacity 0.25–0.45.
+            8 light dapple patches: pale yellow ellipses on ground, opacity 0.08–0.15,
+              filter="url(#glow-sm)".
+            12 small pebble/dirt circles scattered on ground surface.
+
+            ═══ LAYER G — ATMOSPHERIC PARTICLES (140+ elements) ═══
+
+            Sub-layer G1 — Floating seasonal particles (80 elements):
+            80 particles appropriate to the holiday/season:
+            Distribute across full canvas (not clustered). Each has unique position.
+            Types by holiday mood:
+              Petals/leaves: small 5-point or ellipse shapes, holiday accent color
+              Snow/ice: tiny circles r=1–4, white, some with glow
+              Embers/sparks: orange-yellow dots with glow-sm filter
+              Fireflies: tiny circles with large glow-lg halos
+              Dust motes: pale grey ellipses near ground
+            ALL: class="float", staggered animation-delay 0s–12s, unique duration 4s–16s.
+            filter="url(#glow-sm)" on luminous particles.
+
+            Sub-layer G2 — Mist and fog layers (30 elements):
+            8 wide horizontal gradient rects spanning full canvas width at different heights:
+            Heights: y=280, 310, 330, 350, 370, 400, 430, 460.
+            Each: linearGradient transparent→white tint→transparent (horizontal).
+            Opacity 0.03–0.10. filter="url(#haze)". class="shimmer".
+
+            Sub-layer G3 — Light scatter (30 elements):
+            15 light shaft paths from sun/moon position downward:
+            Each = narrow wedge path opacity 0.02–0.06, Indian Yellow → transparent.
+            filter="url(#soft-bg)". class="sun-glow".
+            15 specular highlight ellipses on water/wet surfaces: Titanium White opacity 0.1–0.2.
+
+            ═══ ANIMATION ═══
+            @keyframes sway { 0%,100%{transform:rotate(-1.5deg)}50%{transform:rotate(1.5deg)} }
+            @keyframes sway-sm { 0%,100%{transform:rotate(-0.7deg)}50%{transform:rotate(0.7deg)} }
+            @keyframes grass-wave { 0%,100%{transform:skewX(-4deg) scaleY(0.96)}50%{transform:skewX(4deg) scaleY(1.04)} }
+            @keyframes shimmer { 0%,100%{opacity:0.12}50%{opacity:0.42} }
+            @keyframes shimmer-fast { 0%,100%{opacity:0.08}50%{opacity:0.35} }
+            @keyframes cloud-drift { 0%,100%{transform:translateX(-8px)}50%{transform:translateX(8px)} }
+            @keyframes cloud-drift-slow { 0%,100%{transform:translateX(-3px)}50%{transform:translateX(3px)} }
+            @keyframes flicker { 0%,100%{opacity:0.4}33%{opacity:1.0}66%{opacity:0.65} }
+            @keyframes float { 0%{transform:translateY(0) translateX(0);opacity:0.85} 50%{transform:translateY(-22px) translateX(8px);opacity:1} 100%{transform:translateY(-44px) translateX(-5px);opacity:0} }
+            @keyframes float-slow { 0%{transform:translateY(0);opacity:0.7}50%{transform:translateY(-12px);opacity:0.9}100%{transform:translateY(-24px);opacity:0} }
+            @keyframes sun-pulse { 0%,100%{opacity:0.8}50%{opacity:1.0} }
+            @keyframes water-glow { 0%,100%{opacity:0.15}50%{opacity:0.45} }
+            @keyframes rise { 0%{transform:scaleY(0.95)}50%{transform:scaleY(1.05)}100%{transform:scaleY(0.95)} }
+
+            .tree{animation:sway 6s ease-in-out infinite}
+            .tree-sm{animation:sway-sm 8s ease-in-out infinite}
+            .grass{animation:grass-wave 3s ease-in-out infinite;transform-origin:bottom center}
+            .shimmer{animation:shimmer 4s ease-in-out infinite}
+            .shimmer-fast{animation:shimmer-fast 2s ease-in-out infinite}
+            .cloud{animation:cloud-drift 18s ease-in-out infinite}
+            .cloud-slow{animation:cloud-drift-slow 30s ease-in-out infinite}
+            .flicker{animation:flicker 2s ease-in-out infinite}
+            .float{animation:float 8s ease-in-out infinite}
+            .float-slow{animation:float-slow 14s ease-in-out infinite}
+            .sun-glow{animation:sun-pulse 4s ease-in-out infinite}
+            .water-glow{animation:water-glow 3s ease-in-out infinite}
+
+            Every single animated element MUST have a unique animation-delay (0s–14s) and
+            a unique animation-duration that varies ±25% from the class default — add these
+            as inline style="animation-delay:Xs;animation-duration:Ys" on every element.
 
             ═══ HOLIDAY TEXT ═══
-            Large decorative text near bottom, the holiday name:
-            <text x="450" y="555" text-anchor="middle" font-family="Georgia, serif"
-              font-size="32" font-weight="bold" letter-spacing="3"
-              fill="url(#textGrad)" filter="url(#glow-sm)"
-              style="animation: shimmer 3s ease-in-out infinite">{{holiday.Name}}</text>
-            Define textGrad as linearGradient using Titanium White → Cadmium Yellow → Titanium White.
+            <text x="450" y="562" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+              font-size="34" font-weight="bold" letter-spacing="4"
+              fill="url(#textGrad)" filter="url(#glow)"
+              style="animation:shimmer 3s ease-in-out infinite;animation-delay:0.5s">{{holiday.Name}}</text>
+            Shadow text behind it: same text, fill="#111118" opacity="0.5" y="564" no filter.
+            textGrad: linearGradient Titanium White → Cadmium Yellow → Indian Yellow → Titanium White.
 
             ═══ TECHNICAL ═══
             - viewBox="0 0 900 600" width="100%" height="100%"
-            - Output ONLY valid SVG starting with <svg — zero markdown, zero explanation
-            - All <defs> (gradients, filters) inside a single <defs> block at the top
-            - BEFORE </svg> embed EXACTLY ONE LINE:
+            - Output ONLY valid SVG starting with <svg — zero markdown, zero code fences
+            - All <defs> (gradients, filters, patterns) in ONE <defs> block at the top
+            - Every gradient, filter, pattern referenced must be defined in <defs>
+            - BEFORE </svg> embed exactly:
               <!-- ARTMETA: {"primaryColor":"#XXXXXX","secondaryColor":"#XXXXXX","accentColor":"#XXXXXX","theme":"2-4 word theme"} -->
-              Replace #XXXXXX with actual dominant colors from your painting.
 
-            Paint a masterpiece. Make Bob Ross proud.
+            This is a masterpiece. Paint every layer. Do not stop until 1,400+ elements are placed.
+            Make Bob Ross weep with joy.
             """;
 
         var messages = new List<Message> { new(RoleType.User, prompt) };
@@ -347,7 +491,7 @@ public partial class ArtGenerationService
         {
             Messages = messages,
             Model = AnthropicModels.Claude46Sonnet,
-            MaxTokens = 16000,
+            MaxTokens = 32000,
             Stream = false,
             Temperature = 1.0m
         };

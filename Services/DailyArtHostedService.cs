@@ -48,6 +48,11 @@ public class DailyArtHostedService : BackgroundService
             var cache = scope.ServiceProvider.GetRequiredService<ArtCacheService>();
             var holidayService = scope.ServiceProvider.GetRequiredService<HolidayService>();
 
+            // Generate weather first so it can inform the SVG painting
+            var weatherService = scope.ServiceProvider.GetRequiredService<WeatherService>();
+            var weatherEffect = cache.GetWeatherForDate(date)
+                ?? await weatherService.GenerateAndCacheAsync(date);
+
             // Generate art
             if (cache.GetArtForDate(date) is null)
             {
@@ -65,20 +70,13 @@ public class DailyArtHostedService : BackgroundService
                 _logger.LogInformation("Generating art for {Date}: {Holiday} in {Country}",
                     date, holiday.Name, holiday.CountryName);
 
-                var art = await artGen.GenerateAndCacheAsync(date, holiday);
+                var art = await artGen.GenerateAndCacheAsync(date, holiday, weatherEffect);
                 var discord = scope.ServiceProvider.GetRequiredService<DiscordNotificationService>();
                 await discord.NotifyArtGeneratedAsync(art);
             }
             else
             {
                 _logger.LogInformation("Art already exists for {Date}, skipping generation", date);
-            }
-
-            // Generate weather effect
-            if (cache.GetWeatherForDate(date) is null)
-            {
-                var weather = scope.ServiceProvider.GetRequiredService<WeatherService>();
-                await weather.GenerateAndCacheAsync(date);
             }
         }
         catch (Exception ex)
