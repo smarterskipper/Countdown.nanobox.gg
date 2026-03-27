@@ -127,15 +127,16 @@ public class ReplicateImageService
     /// </summary>
     public async Task<byte[]> AnimateImageAsync(byte[] imagePng, CancellationToken ct = default)
     {
-        _logger.LogInformation("Uploading image to Replicate for animation…");
-        var imageUrl = await UploadFileAsync(imagePng, ct);
+        // Pass image as base64 data URI — avoids the file upload API entirely
+        var base64 = Convert.ToBase64String(imagePng);
+        var dataUri = $"data:image/png;base64,{base64}";
 
-        _logger.LogInformation("Submitting SVD prediction");
+        _logger.LogInformation("Submitting SVD prediction ({Kb} KB image as data URI)", imagePng.Length / 1024);
         var body = JsonSerializer.Serialize(new
         {
             input = new
             {
-                input_image = imageUrl,
+                input_image = dataUri,
                 video_length = "25_frames_with_svd_xt",
                 sizing_strategy = "crop_to_aspect_ratio",
                 frames_per_second = 6,
