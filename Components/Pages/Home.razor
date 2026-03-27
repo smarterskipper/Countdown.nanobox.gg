@@ -12,8 +12,9 @@
 
 <PageTitle>Countdown to August 5th</PageTitle>
 
-<!-- ── Full-screen art background (static fallback; video injected via JS) ── -->
-<div class="art-bg" style="@ArtBgStyle"></div>
+<!-- ── Full-screen art background (isolated component blocks clock re-renders) ── -->
+<ArtBackground VideoUrl="@(_art?.HasVideo == true ? _art.VideoUrl : null)"
+               BgStyle="@ArtBgStyle" />
 
 <!-- ── April 1st special day overlay ── -->
 @if (_isSpecialDay)
@@ -360,12 +361,6 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Mount/unmount video outside Blazor's render cycle so the clock timer can't reset it
-        if (_art?.HasVideo == true)
-            await JS.InvokeVoidAsync("artVideo.mount", _art.VideoUrl);
-        else
-            await JS.InvokeVoidAsync("artVideo.unmount");
-
         if (firstRender && !_isHistorical)
         {
             // Get the viewer's local timezone offset from the browser

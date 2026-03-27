@@ -1,0 +1,33 @@
+@* Isolated background component — ShouldRender blocks per-second clock re-renders
+   so the video element is never patched by Blazor and plays uninterrupted. *@
+
+@if (!string.IsNullOrEmpty(VideoUrl))
+{
+    <video class="art-bg-video" autoplay loop muted playsinline>
+        <source src="@VideoUrl" type="video/mp4">
+    </video>
+}
+else
+{
+    <div class="art-bg" style="@BgStyle"></div>
+}
+
+@code {
+    [Parameter] public string? VideoUrl  { get; set; }
+    [Parameter] public string? BgStyle   { get; set; }
+
+    private string? _renderedVideoUrl;
+    private string? _renderedBgStyle;
+
+    protected override bool ShouldRender()
+    {
+        // Only re-render when the actual content changes, not on every clock tick
+        if (VideoUrl != _renderedVideoUrl || BgStyle != _renderedBgStyle)
+        {
+            _renderedVideoUrl = VideoUrl;
+            _renderedBgStyle  = BgStyle;
+            return true;
+        }
+        return false;
+    }
+}
