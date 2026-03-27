@@ -38,6 +38,25 @@ public class ArtCacheService
         }
     }
 
+    /// <summary>Save Replicate-generated PNG (no SVG).</summary>
+    public async Task SaveArtAsync(DailyArt art, byte[] imagePng)
+    {
+        var pngFile = $"{art.Date:yyyy-MM-dd}.png";
+        art.ScreenshotFileName = pngFile;
+        art.SvgFileName = "";
+        art.GeneratedAt = DateTime.UtcNow;
+
+        await File.WriteAllBytesAsync(Path.Combine(_cacheDir, pngFile), imagePng);
+        await File.WriteAllTextAsync(MetaPath(art.Date),
+            JsonSerializer.Serialize(art, new JsonSerializerOptions { WriteIndented = true }));
+
+        _logger.LogInformation("Cached art for {Date}: {Holiday} ({Country}), score {Score}",
+            art.Date, art.HolidayName, art.CountryCode, art.FinalScore);
+
+        OnArtGenerated?.Invoke(art);
+    }
+
+    /// <summary>Save SVG + screenshot PNG (legacy path, kept for compatibility).</summary>
     public async Task SaveArtAsync(DailyArt art, string svgContent, byte[] screenshotPng)
     {
         var svgFile = $"{art.Date:yyyy-MM-dd}.svg";

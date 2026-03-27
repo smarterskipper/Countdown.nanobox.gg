@@ -11,25 +11,8 @@
 
 <PageTitle>Countdown to August 5th</PageTitle>
 
-<!-- ── Full-screen SVG art background ── -->
-<div class="art-bg" style="@ArtBgStyle">
-    @if (_svgContent is not null)
-    {
-        @((MarkupString)_svgContent)
-    }
-    else
-    {
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" width="100%" height="100%">
-            <defs>
-                <linearGradient id="fbg" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#0f0f1a"/>
-                    <stop offset="100%" stop-color="#1a1a3e"/>
-                </linearGradient>
-            </defs>
-            <rect width="900" height="600" fill="url(#fbg)"/>
-        </svg>
-    }
-</div>
+<!-- ── Full-screen art background ── -->
+<div class="art-bg" style="@ArtBgStyle"></div>
 
 <!-- ── April 1st special day overlay ── -->
 @if (_isSpecialDay)
@@ -256,7 +239,6 @@
     private GenerationProgress? _genProgress;
 
     private DailyArt? _art;
-    private string? _svgContent;
     private WeatherEffect? _weather;
     private List<string> _particles = [];
     private int _daysRemaining;
@@ -324,8 +306,6 @@
     private void LoadArt()
     {
         _art = ArtCache.GetArtForDate(_viewingDate);
-        if (_art is not null)
-            _svgContent = ArtCache.ReadSvgContent(_viewingDate);
     }
 
     private void LoadWeather()
@@ -341,7 +321,6 @@
         InvokeAsync(() =>
         {
             _art = art;
-            _svgContent = ArtCache.ReadSvgContent(art.Date);
             if (_weather is null) LoadWeather();
             StateHasChanged();
         });
@@ -494,7 +473,7 @@
 
     private string ArtBgStyle => _art is null
         ? "background: linear-gradient(135deg, #0f0f1a 0%, #1a1a3e 100%);"
-        : "";
+        : $"background-image: url('{_art.ScreenshotUrl}'); background-size: cover; background-position: center;";
 
     private string DaysNumberStyle => _art is null
         ? "color: rgba(255,255,255,0.85); text-shadow: 0 2px 20px rgba(0,0,0,0.9);"
