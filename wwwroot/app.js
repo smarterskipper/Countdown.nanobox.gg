@@ -15,24 +15,32 @@ window.artVideo = {
         v.loop = true;
         v.muted = true;
         v.setAttribute('playsinline', '');
-
-        // Crossfade at loop point so the cut is invisible
-        var fadeDur = 0.9; // seconds to fade out before loop
-        var nearEnd = false;
         v.style.transition = 'opacity 0.8s ease-in-out';
 
-        v.addEventListener('timeupdate', function () {
-            if (!v.duration) return;
-            var timeLeft = v.duration - v.currentTime;
+        // Schedule precise crossfade at loop point using setTimeout
+        v.addEventListener('loadedmetadata', function () {
+            var fadeOut = 1.0;  // seconds before end to start fade out
+            var fadeIn  = 0.3;  // seconds after loop restart to start fade in
 
-            if (timeLeft < fadeDur && !nearEnd) {
-                nearEnd = true;
-                v.style.opacity = '0';
-            } else if (timeLeft >= fadeDur && nearEnd) {
-                // Video has looped back to start
-                nearEnd = false;
-                v.style.opacity = '1';
+            function cycle() {
+                if (document.getElementById('art-bg-video') !== v) return;
+                var msUntilFade = Math.max(0, (v.duration - fadeOut - v.currentTime) * 1000);
+
+                setTimeout(function () {
+                    if (document.getElementById('art-bg-video') !== v) return;
+                    v.style.opacity = '0';
+
+                    // Fade back in shortly after the loop restarts
+                    setTimeout(function () {
+                        if (document.getElementById('art-bg-video') !== v) return;
+                        v.style.opacity = '1';
+                        // Schedule the next cycle
+                        setTimeout(cycle, Math.max(0, (v.duration - fadeOut - fadeIn) * 1000));
+                    }, (fadeOut + fadeIn) * 1000);
+                }, msUntilFade);
             }
+
+            cycle();
         });
 
         var s = document.createElement('source');
@@ -40,7 +48,6 @@ window.artVideo = {
         s.type = 'video/mp4';
         v.appendChild(s);
 
-        // Insert after art-bg div so it layers on top
         var bg = document.querySelector('.art-bg');
         if (bg && bg.parentNode) {
             bg.parentNode.insertBefore(v, bg.nextSibling);
