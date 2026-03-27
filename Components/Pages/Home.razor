@@ -74,6 +74,7 @@
     }
     <div class="topbar-links">
         <a href="/gallery" class="topbar-link">Gallery</a>
+        <a href="/about" class="topbar-link">About</a>
         <a href="/auth/logout" class="topbar-link" style="opacity:0.4;font-size:0.75rem;">Sign out</a>
     </div>
 </div>
@@ -105,11 +106,6 @@
                     <div class="progress-heat" style="animation-delay:-0.5s;animation-duration:1.9s;opacity:.5;"></div>
                 </div>
             </div>
-            <!-- Falling sparks -->
-            @for (int i = 0; i < 14; i++)
-            {
-                <div class="progress-spark" style="@SparkStyle(i)"></div>
-            }
         </div>
         <div class="progress-label">
             @_progressPercent.ToString("F0")% of the journey
