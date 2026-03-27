@@ -1,6 +1,6 @@
 @page "/"
 @attribute [Authorize]
-@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@rendermode InteractiveServer
 @inject ArtCacheService ArtCache
 @inject WeatherService Weather
 @inject NavigationManager Nav
@@ -12,9 +12,8 @@
 
 <PageTitle>Countdown to August 5th</PageTitle>
 
-<!-- ── Full-screen art background (isolated component blocks clock re-renders) ── -->
-<ArtBackground VideoUrl="@(_art?.HasVideo == true ? _art.VideoUrl : null)"
-               BgStyle="@ArtBgStyle" />
+<!-- ── Full-screen art background ── -->
+<div class="art-bg" style="@ArtBgStyle"></div>
 
 <!-- ── April 1st special day overlay ── -->
 @if (_isSpecialDay)
