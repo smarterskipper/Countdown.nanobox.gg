@@ -135,6 +135,14 @@ var app = builder.Build();
 // ── Forwarded headers must be first so everything downstream sees correct scheme/host ──
 app.UseForwardedHeaders();
 
+// ── Force HTTPS scheme in production (app is always behind Cloudflare Tunnel) ─
+// The app listens on http://0.0.0.0:5000 internally but is never directly exposed;
+// forcing https here ensures OAuth redirect_uri and cookie Secure flags are correct.
+if (!app.Environment.IsDevelopment())
+{
+    app.Use((ctx, next) => { ctx.Request.Scheme = "https"; return next(); });
+}
+
 // ── Middleware ────────────────────────────────────────────────────────────────
 if (!app.Environment.IsDevelopment())
 {
