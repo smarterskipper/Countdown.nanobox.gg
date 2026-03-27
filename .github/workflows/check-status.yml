@@ -10,11 +10,11 @@ jobs:
     steps:
       - name: Art cache files
         run: |
-          echo "=== Art cache (today) ==="
-          ls -lh /var/lib/homecountdown/art-cache/$(date +%Y-%m-%d)* 2>/dev/null || echo "no files for today"
+          echo "=== All art cache files ==="
+          ls -lht /var/lib/homecountdown/art-cache/ 2>/dev/null | head -20
           echo ""
-          echo "=== Today JSON ==="
-          cat /var/lib/homecountdown/art-cache/$(date +%Y-%m-%d).json 2>/dev/null || echo "not found"
+          echo "=== 2026-03-26.json ==="
+          cat /var/lib/homecountdown/art-cache/2026-03-26.json 2>/dev/null || echo "not found"
           echo ""
           echo "=== Animation error log ==="
           cat /var/lib/homecountdown/art-cache/animation-error.txt 2>/dev/null || echo "no animation errors logged"
