@@ -107,52 +107,54 @@
                 </div>
             </div>
         </div>
-        <div class="progress-label">
-            @_progressPercent.ToString("F0")% of the journey
-        </div>
-
-        <!-- Live clock (hours : minutes : seconds) -->
-        @if (!_isHistorical)
-        {
-            <div class="clock-display">@_timeStr</div>
-            <div class="date-weather-line">
-                <span class="date-weather-date">@DateTime.UtcNow.AddMinutes(-_clientTzOffset).ToString("dddd, MMMM d")</span>
-                @if (_weather is not null)
-                {
-                    <span class="date-weather-sep">·</span>
-                    <span class="date-weather-condition">@WeatherIcon(_weather.Type) @_weather.Description</span>
-                }
+        <div class="bottom-card">
+            <div class="progress-label">
+                @_progressPercent.ToString("F0")% of the journey
             </div>
-        }
 
-        <!-- Art attribution / generating state -->
-        @if (_art is null)
-        {
-            @if (!_isHistorical && _genProgress is not null)
+            <!-- Live clock (hours : minutes : seconds) -->
+            @if (!_isHistorical)
             {
-                <div class="gen-status">
-                    <div class="gen-status-phase">@_genProgress.Phase</div>
-                    @if (_genProgress.MaxAttempts > 0)
+                <div class="clock-display">@_timeStr</div>
+                <div class="date-weather-line">
+                    <span class="date-weather-date">@DateTime.UtcNow.AddMinutes(-_clientTzOffset).ToString("dddd, MMMM d")</span>
+                    @if (_weather is not null)
                     {
-                        <div class="gen-status-bar">
-                            <div class="gen-status-fill" style="width:@((double)_genProgress.Attempt / _genProgress.MaxAttempts * 100)%"></div>
-                        </div>
-                        @if (_genProgress.LastScore.HasValue)
-                        {
-                            <div class="gen-status-score">last score @_genProgress.LastScore.Value.ToString("F1")/10</div>
-                        }
+                        <span class="date-weather-sep">·</span>
+                        <span class="date-weather-condition">@WeatherIcon(_weather.Type) @_weather.Description</span>
                     }
                 </div>
             }
+
+            <!-- Art attribution / generating state -->
+            @if (_art is null)
+            {
+                @if (!_isHistorical && _genProgress is not null)
+                {
+                    <div class="gen-status">
+                        <div class="gen-status-phase">@_genProgress.Phase</div>
+                        @if (_genProgress.MaxAttempts > 0)
+                        {
+                            <div class="gen-status-bar">
+                                <div class="gen-status-fill" style="width:@((double)_genProgress.Attempt / _genProgress.MaxAttempts * 100)%"></div>
+                            </div>
+                            @if (_genProgress.LastScore.HasValue)
+                            {
+                                <div class="gen-status-score">last score @_genProgress.LastScore.Value.ToString("F1")/10</div>
+                            }
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="art-credit generating">@(_isHistorical ? "no art for this day" : "generating today's art…")</div>
+                }
+            }
             else
             {
-                <div class="art-credit generating">@(_isHistorical ? "no art for this day" : "generating today's art…")</div>
+                <div class="art-credit">@_art.Theme</div>
             }
-        }
-        else
-        {
-            <div class="art-credit">@_art.Theme</div>
-        }
+        </div>
 
         <!-- April 1st mini countdown -->
         @if (_daysUntilSpecial > 0)

@@ -302,15 +302,23 @@ body::before {
 
 .countdown-card {
     pointer-events: auto;
+    text-align: center;
+    width: min(92vw, 420px);
+    animation: scale-in 0.5s ease both;
+}
+
+/* Pill card — only behind the bottom text cluster */
+.bottom-card {
     background: rgba(0,0,0,0.28);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 2rem;
-    padding: 1.75rem clamp(1.25rem, 5vw, 3rem);
-    text-align: center;
-    width: min(92vw, 420px);
-    animation: scale-in 0.5s ease both;
+    border-radius: 1.25rem;
+    padding: 0.6rem 1.25rem 0.65rem;
+    margin-top: 0.4rem;
+    display: inline-block;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* ── Days number ──────────────────────────────────────────────────────────── */
@@ -939,7 +947,6 @@ body:has(.gallery-page) {
 
     .countdown-card {
         width: 96vw;
-        padding: 1.25rem 1rem;
     }
 
     .days-label {
