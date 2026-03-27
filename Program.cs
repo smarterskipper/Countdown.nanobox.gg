@@ -182,7 +182,7 @@ app.Use(async (ctx, next) =>
 // Start Google OAuth challenge
 app.MapGet("/auth/login-google", (HttpContext ctx, string? returnUrl) =>
     Results.Challenge(
-        new AuthenticationProperties { RedirectUri = returnUrl ?? "/" },
+        new AuthenticationProperties { RedirectUri = string.IsNullOrEmpty(returnUrl) ? "/" : returnUrl },
         [GoogleDefaults.AuthenticationScheme]));
 
 // Sign out
