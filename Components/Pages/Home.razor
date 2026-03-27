@@ -1,6 +1,6 @@
 @page "/"
 @attribute [Authorize]
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject ArtCacheService ArtCache
 @inject WeatherService Weather
 @inject NavigationManager Nav
