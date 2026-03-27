@@ -1271,3 +1271,308 @@ body:has(.gallery-page) {
     z-index: 9998;
     font-size: 0.85rem;
 }
+
+/* ── Live clock (HH:MM:SS) ────────────────────────────────────────────────── */
+.clock-display {
+    font-family: 'Roboto', monospace, system-ui;
+    font-size: clamp(1rem, 4vw, 1.5rem);
+    font-weight: 300;
+    letter-spacing: 0.18em;
+    color: rgba(255,255,255,0.45);
+    text-shadow: 0 1px 8px rgba(0,0,0,0.8);
+    margin-top: 0.1rem;
+    margin-bottom: 0.5rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Milestone overlay ────────────────────────────────────────────────────── */
+.milestone-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+    animation: milestone-in 0.6s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+@keyframes milestone-in {
+    from { opacity: 0; backdrop-filter: blur(0px); }
+    to   { opacity: 1; backdrop-filter: blur(8px); }
+}
+
+.milestone-overlay--major  { background: rgba(5,  10, 20, 0.82); }
+.milestone-overlay--big    { background: rgba(5,  10, 25, 0.80); }
+.milestone-overlay--close  { background: rgba(10,  5, 25, 0.80); }
+.milestone-overlay--urgent { background: rgba(20,  5,  5, 0.82); }
+.milestone-overlay--fire   { background: rgba(15,  8,  0, 0.85); }
+
+.milestone-star {
+    position: absolute;
+    color: rgba(255,220,80,0.5);
+    pointer-events: none;
+    animation: milestone-float linear infinite;
+    user-select: none;
+}
+.milestone-overlay--big    .milestone-star { color: rgba(96,165,250,0.5); }
+.milestone-overlay--close  .milestone-star { color: rgba(167,139,250,0.5); }
+.milestone-overlay--urgent .milestone-star { color: rgba(249,115,22,0.55); }
+.milestone-overlay--fire   .milestone-star { color: rgba(251,191,36,0.6); }
+
+@keyframes milestone-float {
+    0%   { transform: translateY(0)  rotate(0deg)  scale(1);   opacity: 0.8; }
+    50%  { transform: translateY(-30px) rotate(20deg) scale(1.2); opacity: 1; }
+    100% { transform: translateY(-80px) rotate(-10deg) scale(0.8); opacity: 0; }
+}
+
+.milestone-content {
+    text-align: center;
+    z-index: 1;
+    pointer-events: none;
+    padding: 2rem;
+}
+
+.milestone-eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    margin-bottom: 0.75rem;
+}
+
+.milestone-number {
+    font-size: clamp(6rem, 25vw, 12rem);
+    font-weight: 900;
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+    transition: color 0.5s;
+}
+
+.milestone-label {
+    font-size: clamp(0.7rem, 2.5vw, 1rem);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    margin-top: 0.3rem;
+    margin-bottom: 0.75rem;
+}
+
+.milestone-title {
+    font-size: clamp(1rem, 3.5vw, 1.6rem);
+    font-weight: 300;
+    color: rgba(255,255,255,0.75);
+    letter-spacing: 0.06em;
+    margin-bottom: 2rem;
+}
+
+.milestone-dismiss {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+    animation: milestone-blink 2s ease-in-out infinite;
+}
+
+@keyframes milestone-blink {
+    0%, 100% { opacity: 0.3; }
+    50%       { opacity: 0.7; }
+}
+
+/* ── Milestone badge (on countdown card, active milestone day) ────────────── */
+.milestone-badge-wrap {
+    margin-bottom: 0.5rem;
+}
+
+.milestone-badge {
+    display: inline-block;
+    padding: 0.25rem 0.8rem;
+    background: rgba(251,191,36,0.15);
+    border: 1px solid rgba(251,191,36,0.35);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: rgba(251,191,36,0.9);
+    text-transform: uppercase;
+    animation: milestone-badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes milestone-badge-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,0); }
+    50%       { box-shadow: 0 0 12px 4px rgba(251,191,36,0.2); }
+}
+
+/* ── Approaching milestone pill ───────────────────────────────────────────── */
+.milestone-approaching {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    padding: 0.28rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+    background: rgba(96,165,250,0.1);
+    border: 1px solid rgba(96,165,250,0.22);
+    color: rgba(147,197,253,0.85);
+}
+
+.milestone-approaching--close {
+    background: rgba(167,139,250,0.1);
+    border-color: rgba(167,139,250,0.25);
+    color: rgba(196,181,253,0.9);
+}
+
+.milestone-approaching--urgent,
+.milestone-approaching--fire {
+    background: rgba(249,115,22,0.12);
+    border-color: rgba(249,115,22,0.3);
+    color: rgba(253,186,116,0.95);
+    animation: approaching-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes approaching-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,0); }
+    50%       { box-shadow: 0 0 10px 3px rgba(249,115,22,0.2); }
+}
+
+/* ── Gallery timelapse ────────────────────────────────────────────────────── */
+.timelapse-bar {
+    max-width: 1200px;
+    margin: 0 auto 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.timelapse-toggle {
+    padding: 0.5rem 1.2rem;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    color: rgba(255,255,255,0.75);
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    font-family: inherit;
+}
+.timelapse-toggle:hover { background: rgba(255,255,255,0.13); color: #fff; }
+
+.timelapse-hint {
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.25);
+    letter-spacing: 0.05em;
+}
+
+.timelapse-player {
+    max-width: 1200px;
+    margin: 0 auto 2rem;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 1rem;
+    overflow: hidden;
+    animation: fade-in 0.3s ease both;
+}
+
+.timelapse-frame {
+    position: relative;
+    aspect-ratio: 3/2;
+    background: #0f0f1a;
+    overflow: hidden;
+}
+
+.timelapse-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.15s ease;
+}
+
+.timelapse-frame-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1.5rem 1.5rem 1rem;
+    background: linear-gradient(transparent, rgba(0,0,0,0.75));
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.timelapse-frame-date {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    letter-spacing: 0.04em;
+}
+
+.timelapse-frame-holiday {
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.6);
+}
+
+.timelapse-frame-counter {
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.1em;
+}
+
+.timelapse-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.9rem 1.25rem;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    flex-wrap: wrap;
+}
+
+.timelapse-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.75);
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    flex-shrink: 0;
+    font-family: inherit;
+}
+.timelapse-btn:hover { background: rgba(255,255,255,0.16); color: #fff; }
+
+.timelapse-btn--play {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+    background: rgba(255,255,255,0.12);
+}
+
+.timelapse-scrubber {
+    flex: 1;
+    min-width: 80px;
+    accent-color: rgba(255,255,255,0.7);
+    height: 3px;
+    cursor: pointer;
+}
+
+.timelapse-speed {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px;
+    color: rgba(255,255,255,0.6);
+    font-size: 0.78rem;
+    padding: 0.3rem 0.5rem;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.timelapse-speed option { background: #1a1a2e; color: #fff; }
