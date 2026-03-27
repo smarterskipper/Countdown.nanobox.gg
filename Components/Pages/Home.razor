@@ -15,7 +15,7 @@
 <!-- ── Full-screen art background ── -->
 @if (_art?.HasVideo == true)
 {
-    <video class="art-bg-video" autoplay loop muted playsinline>
+    <video @key="@_art.VideoUrl" class="art-bg-video" autoplay loop muted playsinline>
         <source src="@_art.VideoUrl" type="video/mp4">
     </video>
 }
