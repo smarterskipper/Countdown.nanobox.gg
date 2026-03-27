@@ -1124,7 +1124,7 @@ body:has(.gallery-page) {
 .special-heart {
     position: absolute;
     bottom: -2rem;
-    color: rgba(255, 100, 140, 0.8);
+    color: rgba(255, 215, 80, 0.85);
     animation: float-heart linear infinite;
     user-select: none;
 }
@@ -1752,7 +1752,7 @@ body:has(.gallery-page) {
 
 .about-heart {
     font-size: 1.4rem;
-    color: #f43f5e;
+    color: #ffd700;
     animation: about-pulse 2.4s ease-in-out infinite;
     display: inline-block;
 }
@@ -1863,7 +1863,7 @@ body:has(.gallery-page) {
 }
 
 .about-footer-heart {
-    color: #f43f5e;
+    color: #ffd700;
     font-size: 1rem;
     opacity: 0.6;
 }
