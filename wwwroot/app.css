@@ -320,9 +320,7 @@ body::before {
 
 /* Pill card — only behind the bottom text cluster */
 .bottom-card {
-    background: rgba(0,0,0,0.28);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: rgba(0,0,0,0.22);
     border: 1px solid rgba(255,255,255,0.06);
     border-radius: 1.25rem;
     padding: 0.6rem 1.25rem 0.65rem;
