@@ -52,7 +52,7 @@ jobs:
       # ── 4. Write secrets to protected env file ────────────────────────────
       - name: Write environment secrets
         run: |
-          printf 'ANTHROPIC_API_KEY=%s\nDISCORD_WEBHOOK_URL=%s\nASPNETCORE_URLS=http://0.0.0.0:5000\nASPNETCORE_ENVIRONMENT=Production\nPLAYWRIGHT_BROWSERS_PATH=/home/runner/.cache/ms-playwright\nArtCache__Path=/var/lib/homecountdown/art-cache\nGoogle__ClientId=%s\nGoogle__ClientSecret=%s\nGoogle__ApprovedEmails=%s\n' \
+          printf 'ANTHROPIC_API_KEY=%s\nDISCORD_WEBHOOK_URL=%s\nASPNETCORE_URLS=http://0.0.0.0:5000\nASPNETCORE_ENVIRONMENT=Production\nPLAYWRIGHT_BROWSERS_PATH=/home/runner/.cache/ms-playwright\nArtCache__Path=/var/lib/homecountdown/art-cache\nGoogle__ClientId=%s\nGoogle__ClientSecret=%s\nGoogle__ApprovedEmails=%s\nTZ=America/New_York\n' \
             '${{ secrets.ANTHROPIC_API_KEY }}' \
             '${{ secrets.DISCORD_WEBHOOK_URL }}' \
             '${{ secrets.GOOGLE_CLIENT_ID }}' \
@@ -115,17 +115,55 @@ jobs:
         run: |
           SHORT_SHA="${{ github.sha }}"
           SHORT_SHA="${SHORT_SHA:0:7}"
-          LOGS=$(sudo journalctl -u homecountdown -n 30 --no-pager 2>/dev/null \
-            | tail -15 \
-            | cut -c1-120 \
+
+          # Service logs — last 20 lines, truncated to fit Discord field limit
+          SERVICE_LOGS=$(sudo journalctl -u homecountdown -n 20 --no-pager 2>/dev/null \
+            | cut -c1-150 \
             || echo "logs unavailable")
+
+          # Env file presence check (values redacted for security)
+          ENV_CHECK=$(awk -F= '
+            NR==1{print "```"}
+            {
+              key=$1
+              val=$2
+              if (length(val)==0) status="❌ MISSING"
+              else if (key ~ /SECRET|KEY|PASSWORD/) status="✅ set (redacted)"
+              else status="✅ " val
+              print key " = " status
+            }
+            END{print "```"}
+          ' /etc/homecountdown.env 2>/dev/null || echo "\`\`\`env file not found\`\`\`")
+
+          # Disk space
+          DISK=$(df -h /opt/homecountdown 2>/dev/null | tail -1 | awk '{print $3"/"$4" used ("$5")"}' || echo "unavailable")
+
+          # systemd service status
+          SVC_STATUS=$(sudo systemctl is-active homecountdown 2>/dev/null || echo "unknown")
+
           PAYLOAD=$(jq -n \
             --arg sha "$SHORT_SHA" \
             --arg msg "$COMMIT_MSG" \
             --arg actor "${{ github.actor }}" \
             --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --arg logs "$LOGS" \
-            '{embeds:[{title:"❌ Deploy failed",color:15158332,fields:[{name:"Commit",value:("`"+$sha+"`  "+$msg),inline:false},{name:"Triggered by",value:$actor,inline:true},{name:"Run",value:("[view logs]("+$run_url+")"),inline:true},{name:"Service logs",value:("```\n"+$logs+"\n```"),inline:false}],footer:{text:"HomelabCountdown CI/CD"}}]}')
+            --arg svc "$SVC_STATUS" \
+            --arg disk "$DISK" \
+            --arg env_check "$ENV_CHECK" \
+            --arg logs "$SERVICE_LOGS" \
+            '{embeds:[{
+              title:"❌ Deploy failed",
+              color:15158332,
+              fields:[
+                {name:"Commit",value:("`"+$sha+"`  "+$msg),inline:false},
+                {name:"Triggered by",value:$actor,inline:true},
+                {name:"Run",value:("[view logs]("+$run_url+")"),inline:true},
+                {name:"Service state",value:$svc,inline:true},
+                {name:"Disk usage (/opt/homecountdown)",value:$disk,inline:true},
+                {name:"Env file",value:$env_check,inline:false},
+                {name:"Service logs (last 20)",value:("```\n"+$logs+"\n```"),inline:false}
+              ],
+              footer:{text:"HomelabCountdown CI/CD"}
+            }]}')
           curl -s -X POST "$DISCORD_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
