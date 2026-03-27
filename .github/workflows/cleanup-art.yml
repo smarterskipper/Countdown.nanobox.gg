@@ -1,0 +1,38 @@
+name: Cleanup Art Cache
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date to delete (YYYY-MM-DD)'
+        required: true
+      regenerate:
+        description: 'Restart service to trigger regeneration?'
+        type: boolean
+        default: false
+
+jobs:
+  cleanup:
+    name: Delete art for date
+    runs-on: self-hosted
+    steps:
+      - name: Delete art files
+        run: |
+          DATE="${{ github.event.inputs.date }}"
+          ART_DIR="/var/lib/homecountdown/art-cache"
+          echo "Deleting art for $DATE..."
+          for f in "$ART_DIR/$DATE.json" "$ART_DIR/$DATE.svg" "$ART_DIR/$DATE.png" "$ART_DIR/weather-$DATE.json"; do
+            if [ -f "$f" ]; then
+              rm "$f"
+              echo "  deleted: $f"
+            else
+              echo "  not found: $f"
+            fi
+          done
+          echo "Done."
+
+      - name: Restart service (to trigger regeneration of today)
+        if: ${{ github.event.inputs.regenerate == 'true' }}
+        run: |
+          sudo systemctl restart homecountdown
+          echo "Service restarted — art will regenerate on startup."
