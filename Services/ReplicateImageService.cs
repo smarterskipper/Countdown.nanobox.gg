@@ -121,7 +121,7 @@ public class ReplicateImageService
             {
                 input_image = dataUri,
                 video_length = "25_frames_with_svd_xt",
-                sizing_strategy = "crop_to_aspect_ratio",
+                sizing_strategy = "crop_to_16_9",
                 frames_per_second = 6,
                 motion_bucket_id = 127,
                 cond_aug = 0.02
