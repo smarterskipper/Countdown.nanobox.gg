@@ -10,8 +10,9 @@ namespace HomelabCountdown.Services;
 public class ReplicateImageService
 {
     private const string PredictionUrl = "https://api.replicate.com/v1/models/black-forest-labs/flux-2-pro/predictions";
-    private const string SvdUrl = "https://api.replicate.com/v1/models/stability-ai/stable-video-diffusion/predictions";
-    private const string FilesUrl = "https://api.replicate.com/v1/files";
+    // Stable Video Diffusion XT — versioned endpoint required (model doesn't support "latest" API)
+    private const string PredictionsUrl = "https://api.replicate.com/v1/predictions";
+    private const string SvdVersion = "3f0457e4619daac51203dedb472816fd4af51f3149fa7a9e0b5ffcf1b8172438";
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(5);
 
@@ -104,25 +105,6 @@ public class ReplicateImageService
     }
 
     /// <summary>
-    /// Uploads a PNG to Replicate file hosting and returns its hosted URL.
-    /// </summary>
-    private async Task<string> UploadFileAsync(byte[] bytes, CancellationToken ct)
-    {
-        using var form = new MultipartFormDataContent();
-        var fileContent = new ByteArrayContent(bytes);
-        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
-        form.Add(fileContent, "content", "image.png");
-
-        var resp = await _http.PostAsync(FilesUrl, form, ct);
-        resp.EnsureSuccessStatusCode();
-
-        var json = await resp.Content.ReadAsStringAsync(ct);
-        var doc = JsonDocument.Parse(json);
-        return doc.RootElement.GetProperty("urls").GetProperty("get").GetString()
-            ?? throw new InvalidOperationException("No URL in Replicate file upload response");
-    }
-
-    /// <summary>
     /// Takes a PNG image and animates it into a short looping MP4 via Stable Video Diffusion.
     /// </summary>
     public async Task<byte[]> AnimateImageAsync(byte[] imagePng, CancellationToken ct = default)
@@ -134,6 +116,7 @@ public class ReplicateImageService
         _logger.LogInformation("Submitting SVD prediction ({Kb} KB image as data URI)", imagePng.Length / 1024);
         var body = JsonSerializer.Serialize(new
         {
+            version = SvdVersion,
             input = new
             {
                 input_image = dataUri,
@@ -146,7 +129,7 @@ public class ReplicateImageService
         });
 
         var createResp = await _http.PostAsync(
-            SvdUrl,
+            PredictionsUrl,
             new StringContent(body, Encoding.UTF8, "application/json"),
             ct);
 
