@@ -41,7 +41,7 @@ public partial class ArtGenerationService
             if (!existing.HasVideo)
             {
                 _logger.LogInformation("Art cached for {Date} but no video — animating now", date);
-                await AnimateExistingAsync(existing);
+                await AnimateOnlyAsync(existing);
             }
             else
             {
@@ -124,7 +124,7 @@ public partial class ArtGenerationService
         await _cache.SaveArtAsync(art, image!);
 
         // Animate the still image into a short looping video
-        await AnimateExistingAsync(art, image!);
+        await AnimateOnlyAsync(art, image!);
 
         _status.Clear();
         return art;
@@ -133,7 +133,7 @@ public partial class ArtGenerationService
     // ── Animation ─────────────────────────────────────────────────────────────
 
     /// <summary>Animate an existing art entry that has no video yet.</summary>
-    private async Task AnimateExistingAsync(DailyArt art, byte[]? imageBytes = null)
+    public async Task AnimateOnlyAsync(DailyArt art, byte[]? imageBytes = null)
     {
         _status.Update("Animating painting…", 0, 0, null);
         try
@@ -162,6 +162,13 @@ public partial class ArtGenerationService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Animation failed for {Date} — static image will be used", art.Date);
+            try
+            {
+                await File.WriteAllTextAsync(
+                    Path.Combine(_cache.CacheDir, "animation-error.txt"),
+                    $"{DateTime.UtcNow:u} | {art.Date} | {ex.GetType().Name}: {ex.Message}\n{ex}");
+            }
+            catch { /* don't let logging failure mask the real error */ }
         }
     }
 

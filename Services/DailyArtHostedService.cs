@@ -54,7 +54,8 @@ public class DailyArtHostedService : BackgroundService
                 ?? await weatherService.GenerateAndCacheAsync(date);
 
             // Generate art
-            if (cache.GetArtForDate(date) is null)
+            var existingArt = cache.GetArtForDate(date);
+            if (existingArt is null)
             {
                 var artGen = scope.ServiceProvider.GetRequiredService<ArtGenerationService>();
 
@@ -73,6 +74,13 @@ public class DailyArtHostedService : BackgroundService
                 var art = await artGen.GenerateAndCacheAsync(date, holiday, weatherEffect);
                 var discord = scope.ServiceProvider.GetRequiredService<DiscordNotificationService>();
                 await discord.NotifyArtGeneratedAsync(art);
+            }
+            else if (!existingArt.HasVideo)
+            {
+                // Art exists but animation was never completed — run SVD now
+                _logger.LogInformation("Art exists for {Date} but has no video — animating", date);
+                var artGen = scope.ServiceProvider.GetRequiredService<ArtGenerationService>();
+                await artGen.AnimateOnlyAsync(existingArt);
             }
             else
             {
