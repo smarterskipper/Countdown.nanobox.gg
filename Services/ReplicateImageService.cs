@@ -10,7 +10,7 @@ namespace HomelabCountdown.Services;
 /// </summary>
 public class ReplicateImageService
 {
-    private const string PredictionUrl = "https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions";
+    private const string PredictionUrl = "https://api.replicate.com/v1/models/black-forest-labs/flux-2-pro/predictions";
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(5);
 
@@ -44,12 +44,7 @@ public class ReplicateImageService
             input = new
             {
                 prompt,
-                width = 1440,
-                height = 960,
-                output_format = "png",
-                output_quality = 100,
-                safety_tolerance = 5,
-                prompt_upsampling = true
+                output_format = "png"
             }
         });
 
