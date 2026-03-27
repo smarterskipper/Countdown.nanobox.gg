@@ -250,8 +250,9 @@ body::before {
     font-size: 0.8rem;
     font-weight: 500;
     letter-spacing: 0.2em;
-    color: rgba(255,255,255,0.45);
+    color: rgba(255,255,255,0.9);
     text-transform: uppercase;
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
 }
 
 .topbar-links { display: flex; gap: 1.5rem; align-items: center; }
@@ -301,16 +302,13 @@ body::before {
 
 .countdown-card {
     pointer-events: auto;
-    background: rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(24px) saturate(1.2);
-    -webkit-backdrop-filter: blur(24px) saturate(1.2);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: transparent;
+    border: none;
     border-radius: 1.5rem;
     padding: 2rem clamp(1.25rem, 5vw, 3.5rem);
     text-align: center;
     width: min(92vw, 500px);
     animation: scale-in 0.5s ease both;
-    box-shadow: 0 8px 48px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Days number ──────────────────────────────────────────────────────────── */
@@ -321,7 +319,10 @@ body::before {
     line-height: 0.95;
     letter-spacing: -0.04em;
     transition: color 1s ease, text-shadow 1s ease;
-    text-shadow: 0 2px 24px rgba(0,0,0,0.95), 0 0 60px rgba(0,0,0,0.6);
+    text-shadow:
+        -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000,
+        -2px  0   0 #000, 2px  0   0 #000,  0  -2px 0 #000,  0   2px 0 #000,
+        0 4px 24px rgba(0,0,0,0.9), 0 0 80px rgba(0,0,0,0.5);
 }
 
 .days-label {
@@ -448,8 +449,8 @@ body::before {
 
 .progress-label {
     font-size: clamp(0.65rem, 2vw, 0.75rem);
-    color: rgba(255,255,255,0.7);
-    text-shadow: 0 1px 6px rgba(0,0,0,0.9);
+    color: rgba(255,255,255,0.9);
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 2px 8px rgba(0,0,0,0.9);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     margin-top: 0.4rem;
@@ -462,8 +463,8 @@ body::before {
     font-size: 0.72rem;
     font-weight: 400;
     font-style: italic;
-    color: rgba(255,255,255,0.45);
-    text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+    color: rgba(255,255,255,0.85);
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 2px 6px rgba(0,0,0,0.9);
     letter-spacing: 0.06em;
     margin-top: 0.3rem;
 }
@@ -490,19 +491,22 @@ body::before {
 .date-weather-date {
     font-size: 0.7rem;
     letter-spacing: 0.06em;
-    opacity: 0.4;
     font-weight: 500;
     text-transform: uppercase;
+    color: rgba(255,255,255,0.85);
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
 }
 
 .date-weather-sep {
-    opacity: 0.25;
+    color: rgba(255,255,255,0.4);
     font-size: 0.7rem;
+    text-shadow: 0 1px 4px #000;
 }
 
 .date-weather-condition {
     font-size: 0.68rem;
-    opacity: 0.45;
+    color: rgba(255,255,255,0.8);
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
     max-width: 220px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1358,8 +1362,8 @@ body:has(.gallery-page) {
     font-size: clamp(1rem, 4vw, 1.5rem);
     font-weight: 300;
     letter-spacing: 0.18em;
-    color: rgba(255,255,255,0.45);
-    text-shadow: 0 1px 8px rgba(0,0,0,0.8);
+    color: rgba(255,255,255,0.9);
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 2px 8px rgba(0,0,0,0.9);
     margin-top: 0.1rem;
     margin-bottom: 0.5rem;
     font-variant-numeric: tabular-nums;

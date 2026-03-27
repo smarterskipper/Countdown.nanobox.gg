@@ -7,6 +7,7 @@
 @inject ViewerTrackingService ViewerTracker
 @inject ViewerDbService ViewerDb
 @inject GenerationStatusService GenStatus
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>Countdown to August 5th</PageTitle>
@@ -119,7 +120,7 @@
         {
             <div class="clock-display">@_timeStr</div>
             <div class="date-weather-line">
-                <span class="date-weather-date">@DateTime.Today.ToString("dddd, MMMM d")</span>
+                <span class="date-weather-date">@DateTime.UtcNow.AddMinutes(-_clientTzOffset).ToString("dddd, MMMM d")</span>
                 @if (_weather is not null)
                 {
                     <span class="date-weather-sep">·</span>
@@ -229,6 +230,9 @@
     // Live clock
     private string _timeStr = "00:00:00";
     private CancellationTokenSource? _clockCts;
+
+    // Client timezone: JS getTimezoneOffset() = minutes UTC is ahead of local (positive = behind UTC)
+    private int _clientTzOffset = 0; // default to UTC until JS responds
 
     [Parameter, SupplyParameterFromQuery(Name = "date")]
     public string? DateParam { get; set; }
@@ -360,8 +364,21 @@
     {
         if (firstRender && !_isHistorical)
         {
+            // Get the viewer's local timezone offset from the browser
+            _clientTzOffset = await JS.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
+
+            // Recalculate days using client's local date
+            var clientToday = DateOnly.FromDateTime(DateTime.UtcNow.AddMinutes(-_clientTzOffset));
+            _daysRemaining = Math.Max(0, Target.DayNumber - clientToday.DayNumber);
+            var totalDays = Target.DayNumber - CountdownStart.DayNumber;
+            var elapsed = clientToday.DayNumber - CountdownStart.DayNumber;
+            _progressPercent = totalDays > 0
+                ? Math.Min(100, Math.Max(0, (double)elapsed / totalDays * 100))
+                : 100;
+
             _clockCts = new CancellationTokenSource();
             _ = RunClockAsync(_clockCts.Token);
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -383,8 +400,10 @@
 
     private void UpdateClock()
     {
-        var target = new DateTime(2026, 8, 5, 0, 0, 0);
-        var remaining = target - DateTime.Now;
+        // Target = midnight Aug 5 2026 in the viewer's local timezone, expressed as UTC
+        // getTimezoneOffset() = (UTC - local) in minutes, so midnight local = midnight UTC + offset minutes
+        var targetUtc = new DateTime(2026, 8, 5, 0, 0, 0, DateTimeKind.Utc).AddMinutes(_clientTzOffset);
+        var remaining = targetUtc - DateTime.UtcNow;
         if (remaining <= TimeSpan.Zero) { _timeStr = "00:00:00"; return; }
         var h = (int)remaining.TotalHours % 24;
         _timeStr = $"{h:D2}:{remaining.Minutes:D2}:{remaining.Seconds:D2}";
