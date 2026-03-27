@@ -37,16 +37,7 @@ public partial class ArtGenerationService
         var existing = _cache.GetArtForDate(date);
         if (existing is not null)
         {
-            // If art exists but video wasn't generated yet, animate now
-            if (!existing.HasVideo)
-            {
-                _logger.LogInformation("Art cached for {Date} but no video — animating now", date);
-                await AnimateOnlyAsync(existing);
-            }
-            else
-            {
-                _logger.LogInformation("Art already cached for {Date}", date);
-            }
+            _logger.LogInformation("Art already cached for {Date}", date);
             return existing;
         }
 
@@ -122,10 +113,6 @@ public partial class ArtGenerationService
 
         _status.Update("Saving…", attempt, MaxAttempts, score?.Score);
         await _cache.SaveArtAsync(art, image!);
-
-        // Animate the still image into a short looping video
-        await AnimateOnlyAsync(art, image!);
-
         _status.Clear();
         return art;
     }
