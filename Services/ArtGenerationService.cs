@@ -10,22 +10,25 @@ namespace HomelabCountdown.Services;
 public partial class ArtGenerationService
 {
     private const int MaxAttempts = 3;
-    private const double PassScore = 8.0;
+    private const double PassScore = 7.5;
 
     private readonly AnthropicClient _claude;
     private readonly PlaywrightScreenshotService _playwright;
     private readonly ArtCacheService _cache;
+    private readonly GenerationStatusService _status;
     private readonly ILogger<ArtGenerationService> _logger;
 
     public ArtGenerationService(
         AnthropicClient claude,
         PlaywrightScreenshotService playwright,
         ArtCacheService cache,
+        GenerationStatusService status,
         ILogger<ArtGenerationService> logger)
     {
         _claude = claude;
         _playwright = playwright;
         _cache = cache;
+        _status = status;
         _logger = logger;
     }
 
@@ -44,6 +47,9 @@ public partial class ArtGenerationService
         string? svg = null;
         byte[]? screenshot = null;
         ArtScore? score = null;
+        ArtScore? bestScore = null;
+        string? bestSvg = null;
+        byte[]? bestScreenshot = null;
         string critique = "";
         int attempt = 0;
 
@@ -51,41 +57,53 @@ public partial class ArtGenerationService
         {
             attempt++;
             _logger.LogInformation("Art generation attempt {Attempt}/{Max}", attempt, MaxAttempts);
+            _status.Update($"Painting attempt {attempt} of {MaxAttempts}…", attempt, MaxAttempts, bestScore?.Score);
 
             svg = await GenerateSvgAsync(holiday, critique, attempt);
 
-            // ── Code review before rendering ──────────────────────────────
+            // ── Code review (advisory only — always render) ───────────────
+            _status.Update($"Reviewing composition… (attempt {attempt})", attempt, MaxAttempts, bestScore?.Score);
             var review = await ReviewSvgCodeAsync(svg);
-            _logger.LogInformation("Code review — pass: {Pass}, animations: {Anim}, issues: {Issues}",
-                review.Pass, review.AnimationCount, review.CriticalIssues);
+            _logger.LogInformation("Code review — pass: {Pass}, issues: {Issues}", review.Pass, review.CriticalIssues);
 
-            if (!review.Pass && attempt < MaxAttempts)
-            {
-                critique = $"CODE REVIEW FAILED — fix these before anything else: {review.CriticalIssues}. {review.Suggestions}";
-                _logger.LogInformation("Skipping render, regenerating due to code issues");
-                continue;
-            }
-
-            // ── Visual score ──────────────────────────────────────────────
+            // Always render — code review issues just feed into next critique
+            _status.Update($"Rendering… (attempt {attempt})", attempt, MaxAttempts, bestScore?.Score);
             screenshot = await _playwright.ScreenshotSvgAsync(svg);
+
+            _status.Update($"Scoring… (attempt {attempt})", attempt, MaxAttempts, bestScore?.Score);
             score = await ScoreScreenshotAsync(screenshot, holiday);
 
-            _logger.LogInformation("Attempt {Attempt} visual score: {Score}/10 — {Critique}",
-                attempt, score.Score, score.Critique);
+            _logger.LogInformation("Attempt {Attempt} score: {Score}/10 — {Critique}", attempt, score.Score, score.Critique);
 
-            // Combine visual critique with any code suggestions
-            critique = score.Critique;
-            if (!string.IsNullOrEmpty(review.Suggestions))
-                critique += $" Code: {review.Suggestions}";
-
-            if (score.Score >= PassScore && review.Pass)
+            // Track best result in case we exhaust attempts
+            if (bestScore is null || score.Score > bestScore.Score)
             {
-                _logger.LogInformation("Art passed all checks on attempt {Attempt}", attempt);
+                bestScore = score;
+                bestSvg = svg;
+                bestScreenshot = screenshot;
+            }
+
+            // Build critique for next attempt from both visual and code feedback
+            critique = score.Critique;
+            if (!review.Pass && !string.IsNullOrEmpty(review.CriticalIssues))
+                critique += $" Also fix: {review.CriticalIssues}";
+
+            if (score.Score >= PassScore)
+            {
+                _logger.LogInformation("Art passed on attempt {Attempt} with score {Score}", attempt, score.Score);
                 break;
             }
 
             if (attempt >= MaxAttempts)
-                _logger.LogInformation("Reached max attempts, keeping best result (score {Score})", score.Score);
+                _logger.LogInformation("Max attempts reached, using best result (score {Score})", bestScore.Score);
+        }
+
+        // Use best result if final attempt wasn't the best
+        if (bestScore is not null && (score is null || bestScore.Score > score.Score))
+        {
+            svg = bestSvg;
+            screenshot = bestScreenshot;
+            score = bestScore;
         }
 
         var art = new DailyArt
@@ -104,7 +122,9 @@ public partial class ArtGenerationService
             FinalCritique = critique
         };
 
+        _status.Update("Saving…", attempt, MaxAttempts, score?.Score);
         await _cache.SaveArtAsync(art, svg!, screenshot!);
+        _status.Clear();
         return art;
     }
 
@@ -114,8 +134,28 @@ public partial class ArtGenerationService
             ? $"\n\nIMPROVEMENT REQUIRED — previous critique: {previousCritique}\nAddress every point in this critique."
             : "";
 
+        // Bob Ross color palette mapped to hex
+        const string palette = """
+            BOB ROSS MASTER PALETTE — use these exact colors:
+            • Titanium White   #F4F1E8   (highlights, snow, clouds, foam)
+            • Phthalo Blue     #0D1B40   (deep sky, shadows, water depth)
+            • Prussian Blue    #1C3A5E   (sky mid-tones, distant mountains)
+            • Midnight Black   #111118   (deepest darks, tree trunks)
+            • Van Dyke Brown   #3E1A04   (earth, bark, dark foreground)
+            • Dark Sienna      #6B2C0A   (warm earth, rocks, shadows)
+            • Indian Yellow    #E08B0C   (warm light, autumn leaves, golden hour)
+            • Cadmium Yellow   #F5C400   (sun, bright flowers, light accents)
+            • Bright Red       #C42200   (vibrant accents, flowers, berries)
+            • Alizarin Crimson #8B0F14   (deep warm tones, sunset, flowers)
+            • Sap Green        #2C5A1C   (foliage, meadows, moss)
+            • Phthalo Green    #0B3B1C   (dark evergreen trees, deep forest)
+            • Viridian Green   #1A5C3A   (middle foliage, fresh leaves)
+            • Yellow Ochre     #C8901A   (dry grass, sandy ground, warm light)
+            Mix these using gradients and opacity — never use pure fills.
+            """;
+
         var prompt = $$"""
-            You are a world-class SVG artist creating a living, animated full-screen artwork celebrating:
+            You are painting a Bob Ross "Joy of Painting" style SVG landscape for:
 
             Holiday: {{holiday.Name}}
             Local Name: {{holiday.LocalName}}
@@ -123,102 +163,183 @@ public partial class ArtGenerationService
             Date: {{holiday.Date:MMMM d, yyyy}}
             {{critiqueSection}}
 
-            ═══ COMPOSITION (must have all three layers) ═══
-            BACKGROUND: Atmospheric sky, landscape, or environment using rich multi-stop gradients.
-              Include stars, clouds, aurora, or weather tied to the culture/season.
-            MIDGROUND: At least ONE recognizable cultural element — a famous landmark, architectural
-              silhouette, mountain, ocean, forest, or traditional pattern specific to {{holiday.CountryName}}.
-            FOREGROUND: Detailed symbolic objects, flora, or figures. A particle system of 10–20 small
-              elements (petals, sparks, snowflakes, lanterns, stars, fireflies) scattered across canvas.
+            {{palette}}
 
-            ═══ ANIMATION — EVERY ELEMENT MUST FEEL ALIVE ═══
-            This is a living painting. Every natural object gets its own animation.
-            Apply animations via CSS classes with staggered animation-delay on each element
-            so nothing moves in sync. All animations: infinite, ease-in-out.
+            ═══ CORE REQUIREMENT: DENSITY & DETAIL ═══
+            This painting MUST contain AT LEAST 200 individual SVG elements (paths, rects,
+            ellipses, polygons, text). Count every shape. A cluster of trees = 15–25 shapes.
+            A sky = 30+ overlapping cloud ellipses. A mountain range = 8–12 path segments.
+            DO NOT produce sparse art. Every region of the canvas must be richly layered.
 
-            REQUIRED keyframes (define ALL of these in the <style> block):
+            ═══ GAUSSIAN BLUR IS MANDATORY ═══
+            Bob Ross oil painting = soft, blended, zero hard edges. Achieve this with:
 
-            @keyframes sway — trees/plants rocking gently in wind
-              transform: rotate(-1.5deg) → rotate(1.5deg), transform-origin at base (50% 100%)
-              Duration: 3–5s per tree. Each tree gets a different animation-delay (0s, 0.4s, 0.9s…)
+            Define these filters in <defs>:
+            <filter id="soft-bg"><feGaussianBlur stdDeviation="6"/></filter>
+            <filter id="soft-mid"><feGaussianBlur stdDeviation="3"/></filter>
+            <filter id="soft-fg"><feGaussianBlur stdDeviation="1.5"/></filter>
+            <filter id="glow"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="glow-sm"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 
-            @keyframes grass-wave — grass blades rippling like a wave
-              transform: skewX(-4deg) scaleY(0.97) → skewX(4deg) scaleY(1.03)
-              transform-origin: bottom. Each blade/cluster offset by 0.1–0.3s delay.
+            Apply filter rules:
+            • Sky gradients, distant haze: filter="url(#soft-bg)"
+            • All mountains/hills: filter="url(#soft-mid)"
+            • All tree groups: filter="url(#soft-fg)"
+            • Sun/moon/light source: filter="url(#glow)"
+            • Stars, particles, fireflies: filter="url(#glow-sm)"
+            • Water reflections: filter="url(#soft-mid)"
 
-            @keyframes water-shimmer — horizontal shimmer bands on lakes/rivers
-              opacity: 0.3 → 0.7 → 0.3, subtle scaleX(1) → scaleX(1.02) → scaleX(1)
-              Duration: 2–4s. Multiple bands with different delays for ripple effect.
+            ═══ LAYER 1 — SKY (40+ elements) ═══
+            Build sky from scratch using ONLY gradients and overlapping shapes — no flat fill:
 
-            @keyframes cloud-drift — clouds slowly drifting across sky
-              transform: translateX(-8px) → translateX(8px). Duration: 18–30s.
-              Each cloud at a different speed and delay.
+            Base sky: tall linearGradient, 5+ color stops from deep blue/purple at top
+            to warm golden/peach at horizon. Apply to full-canvas rect.
 
-            @keyframes flicker — fire, lanterns, stars, fireflies pulsing
-              opacity: 0.6 → 1.0 → 0.7 → 1.0. Duration: 0.8–2s. Rapid, organic.
+            Cloud masses (25–35 overlapping ellipses per cloud formation):
+            Each cloud = a cluster of rx 30–120, ry 20–60 ellipses at opacity 0.08–0.35.
+            Use Titanium White, with occasional pale Prussian Blue for shadow undersides.
+            Stagger across entire sky width. Apply filter="url(#soft-bg)" to each group.
 
-            @keyframes float — particles, petals, embers rising gently
-              transform: translateY(0) translateX(0) → translateY(-15px) translateX(5px)
-              opacity fade in/out. Duration: 4–8s.
+            Sun OR moon (choose one based on holiday mood):
+            Sun: radial gradient center (Cadmium Yellow → Indian Yellow → transparent),
+            large outer glow circle at opacity 0.15, medium at 0.3, bright core.
+            Moon: similar but Titanium White → cool Prussian Blue glow.
+            Add god-rays: 6–10 thin wedge/line shapes radiating outward at opacity 0.06–0.12.
 
-            @keyframes sun-pulse — sun/moon breathing with a soft glow
-              filter: blur(2px) brightness(1) → blur(4px) brightness(1.15). Duration: 4–6s.
+            Stars (if night): 20–30 small circles, radius 0.8–2.5, Titanium White,
+            some with tiny radialGradient glow. class="flicker" with staggered delays.
 
-            @keyframes bird-glide — birds or leaves arcing across sky (optional)
-              transform: translateX(-60px) translateY(0) → translateX(60px) translateY(-10px)
-              Duration: 8–14s.
+            ═══ LAYER 2 — DISTANT MOUNTAINS (30+ elements) ═══
+            Three distinct ridgelines at different depths:
 
-            IMPLEMENTATION RULES:
-            - Every tree element: class="tree" + inline style="animation-delay: Xs"
-            - Every grass element: class="grass" + unique delay
-            - Every water band: class="shimmer" + unique delay
-            - Every cloud: class="cloud" + unique delay and duration via inline style
-            - Particles/petals/embers: class="float" + unique delay
-            - Stars/fireflies: class="flicker" + unique delay
-            - Apply transform-origin correctly so trees sway from their base, not center
-            - Use 0.5–1.5deg rotation for subtle realism; avoid large rotations that look mechanical
+            Far range (lightest, highest): irregular polygon path with gentle peaks,
+            fill: linearGradient (Prussian Blue tint → fog white at base), opacity 0.5–0.6.
+            filter="url(#soft-bg)". Snow caps: white ellipses at peak tips.
 
-            ═══ VISUAL STYLE — BOB ROSS OIL PAINTING ═══
-            This must look like a Bob Ross "Joy of Painting" landscape — loose, expressive,
-            warm oil-painting aesthetic rendered in SVG. Specific techniques to emulate:
+            Mid range: richer Prussian Blue → Dark Sienna gradient, opacity 0.75.
+            filter="url(#soft-mid)". More dramatic peaks. Shadow sides darker.
 
-            SKIES: Dreamy gradient skies with soft blended cloud masses built from many
-              overlapping ellipses at varying opacity (0.1–0.4). Never a flat solid sky.
-              Warm peachy/golden near horizon, deeper blues/purples high up.
+            Near range: Van Dyke Brown → Phthalo Green gradient, opacity 0.9.
+            filter="url(#soft-mid)". Visible texture. Tree-line silhouette at base.
 
-            MOUNTAINS & HILLS: Soft silhouetted ridgelines using irregular paths. Layer 2–3
-              mountain ranges with progressively lighter values (atmospheric perspective).
-              Snow caps on peaks where appropriate — soft white with blue shadows.
+            Each range = irregular cubic-bezier path with 8–15 control points.
+            Overlap ranges so near obscures far at edges.
 
-            TREES: Bob Ross "happy little trees" — dark evergreen shapes built from stacked
-              triangular or teardrop paths, slightly irregular. Cluster in groups of 3–7.
-              Add highlight strokes (lighter green) on one side for a lit edge.
+            ═══ LAYER 3 — TREES (60+ elements, the Bob Ross signature) ═══
+            Bob Ross evergreen trees are built like this in SVG:
 
-            WATER & REFLECTIONS: Lakes, rivers, or streams with horizontal gradient bands
-              reflecting the sky colors. Add subtle shimmer highlight strokes.
+            ONE TREE = stacked teardrop/diamond shapes, largest at bottom, smallest at top:
+            <ellipse cx="X" cy="Y+40" rx="22" ry="28" fill="Phthalo Green blend"/>
+            <ellipse cx="X" cy="Y+20" rx="16" ry="22" fill="slightly lighter green"/>
+            <ellipse cx="X" cy="Y"    rx="11" ry="16" fill="lighter still"/>
+            <ellipse cx="X" cy="Y-15" rx="7"  ry="11" fill="tip, lightest"/>
+            Highlight side: one thin ellipse at 30% width, opacity 0.35, Sap Green or Viridian.
+            Dark side: one thin ellipse at 70% width, opacity 0.4, Midnight Black.
 
-            LIGHT: One warm light source (sun or moon). God-rays/crepuscular rays as thin
-              radial gradient shapes fanning out from the light source. Golden hour or
-              magic-hour color temperature preferred.
+            Build 8–12 individual trees this way, varying heights (80–200px tall).
+            Group each tree in <g class="tree" style="animation-delay:Xs transform-origin:centerX bottomY">
+            Cluster trees in groups: 3 left side, 4 center-left, 5 center-right, 3 right.
+            Apply filter="url(#soft-fg)" to each tree group.
+            Trunk: thin brown rect under each tree, Van Dyke Brown.
 
-            TEXTURE: Simulate paint texture with many overlapping semi-transparent shapes,
-              slight randomness in paths. Never flat fills — always gradients or texture layers.
+            ═══ LAYER 4 — WATER (if applicable, 20+ elements) ═══
+            Lake, river, or ocean using horizontal gradient bands:
+            Base: linearGradient reflecting sky colors (Phthalo Blue → Prussian Blue → sky tones).
+            20–25 thin horizontal rect strips (height 2–6px) at varying opacity 0.1–0.45,
+            alternating between highlight (Titanium White tint) and shadow (Phthalo Blue).
+            class="shimmer" on each strip with staggered animation-delay 0s–3s.
+            Reflections: blurred vertical smear versions of trees/mountains, opacity 0.25–0.4.
+            filter="url(#soft-mid)" on reflection group.
+            Shore line: curved path, Yellow Ochre → Van Dyke Brown gradient.
 
-            Avoid: hard geometric edges, icons, clipart, flat fills, pure white, black outlines.
-            Every element should feel soft, organic, and hand-painted.
+            ═══ LAYER 5 — CULTURAL ELEMENTS ═══
+            ONE prominent feature specific to {{holiday.CountryName}} and {{holiday.Name}}:
+            This is what makes the painting unique. Examples:
+            - Cherry blossoms: 40+ small petal shapes (class="float")
+            - Lanterns: glowing rounded rectangles with glow filter
+            - Traditional architecture silhouette: complex path
+            - Desert dunes: layered smooth curves
+            - Tropical palm trees: fan-shaped fronds
+            Make this element the visual focal point, centered or slightly off-center.
+            Use bright accent colors from the palette to make it pop.
+
+            ═══ LAYER 6 — FOREGROUND GROUND (20+ elements) ═══
+            Rich ground plane built from overlapping shapes:
+            Base ground: large irregular path, Dark Sienna → Van Dyke Brown gradient.
+            Grass: 15–20 thin blade clusters, Sap Green varying opacity 0.5–0.9.
+              Each cluster = 3–5 thin ellipses tilted ±15deg. class="grass" staggered delays.
+            Ground texture: 8–10 small irregular patches, Yellow Ochre / Van Dyke Brown.
+            Rocks (optional): smooth grey ellipses at ground line, filter="url(#soft-fg)".
+            Wildflowers: 10–15 tiny colored dots/circles (Bright Red, Cadmium Yellow).
+
+            ═══ LAYER 7 — PARTICLES & ATMOSPHERE (20+ elements) ═══
+            Floating particles appropriate to holiday/season:
+            • 15–20 small shapes (petals, embers, fireflies, snowflakes, sparks)
+            • Distributed across full canvas, not just one area
+            • Each with class="float" and unique animation-delay (0s–8s)
+            • filter="url(#glow-sm)" on warm-colored particles
+            • Vary sizes: radius 1.5–6px
+
+            Atmospheric haze: 3–4 large semi-transparent horizontal gradient rects at
+            opacity 0.04–0.08 across sky-land boundary for depth of field.
+
+            ═══ ANIMATION (define ALL in <style>) ═══
+            @keyframes sway {
+              0%,100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); }
+            }
+            @keyframes grass-wave {
+              0%,100% { transform: skewX(-3deg) scaleY(0.97); } 50% { transform: skewX(3deg) scaleY(1.03); }
+            }
+            @keyframes shimmer {
+              0%,100% { opacity: 0.15; } 50% { opacity: 0.45; }
+            }
+            @keyframes cloud-drift {
+              0%,100% { transform: translateX(-6px); } 50% { transform: translateX(6px); }
+            }
+            @keyframes flicker {
+              0%,100% { opacity: 0.5; } 33% { opacity: 1.0; } 66% { opacity: 0.7; }
+            }
+            @keyframes float {
+              0% { transform: translateY(0) translateX(0); opacity: 0.8; }
+              50% { transform: translateY(-18px) translateX(6px); opacity: 1; }
+              100% { transform: translateY(-35px) translateX(-4px); opacity: 0; }
+            }
+            @keyframes sun-pulse {
+              0%,100% { opacity: 0.85; filter: blur(6px); }
+              50% { opacity: 1.0; filter: blur(9px); }
+            }
+            @keyframes water-glow {
+              0%,100% { opacity: 0.2; } 50% { opacity: 0.5; }
+            }
+
+            .tree { animation: sway ease-in-out infinite; }
+            .grass { animation: grass-wave ease-in-out infinite; transform-origin: bottom; }
+            .shimmer { animation: shimmer ease-in-out infinite; }
+            .cloud { animation: cloud-drift ease-in-out infinite; }
+            .flicker { animation: flicker ease-in-out infinite; }
+            .float { animation: float ease-in-out infinite; }
+            .sun-glow { animation: sun-pulse ease-in-out infinite; }
+
+            Apply unique animation-delay (0s to 6s) as inline style on EVERY animated element.
+            Apply unique animation-duration variation (±20%) as inline style for organic feel.
+
+            ═══ HOLIDAY TEXT ═══
+            Large decorative text near bottom, the holiday name:
+            <text x="450" y="555" text-anchor="middle" font-family="Georgia, serif"
+              font-size="32" font-weight="bold" letter-spacing="3"
+              fill="url(#textGrad)" filter="url(#glow-sm)"
+              style="animation: shimmer 3s ease-in-out infinite">{{holiday.Name}}</text>
+            Define textGrad as linearGradient using Titanium White → Cadmium Yellow → Titanium White.
 
             ═══ TECHNICAL ═══
-            - viewBox="0 0 900 600", width="100%", height="100%"
-            - Use SVG <filter> for at least one glow effect:
-              <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-            - Rich palette: minimum 5 gradient stops across multiple gradients
-            - Holiday name rendered as large, decorative SVG <text> with a custom font-family,
-              letter-spacing, and the shimmer animation applied
-            - Output ONLY valid SVG starting with <svg — no markdown, no explanation
-            - Before </svg> embed EXACTLY:
+            - viewBox="0 0 900 600" width="100%" height="100%"
+            - Output ONLY valid SVG starting with <svg — zero markdown, zero explanation
+            - All <defs> (gradients, filters) inside a single <defs> block at the top
+            - BEFORE </svg> embed EXACTLY ONE LINE:
               <!-- ARTMETA: {"primaryColor":"#XXXXXX","secondaryColor":"#XXXXXX","accentColor":"#XXXXXX","theme":"2-4 word theme"} -->
+              Replace #XXXXXX with actual dominant colors from your painting.
 
-            Output only the SVG XML.
+            Paint a masterpiece. Make Bob Ross proud.
             """;
 
         var messages = new List<Message> { new(RoleType.User, prompt) };
@@ -226,7 +347,7 @@ public partial class ArtGenerationService
         {
             Messages = messages,
             Model = AnthropicModels.Claude46Sonnet,
-            MaxTokens = 12000,
+            MaxTokens = 16000,
             Stream = false,
             Temperature = 1.0m
         };

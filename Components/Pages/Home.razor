@@ -6,6 +6,7 @@
 @inject NavigationManager Nav
 @inject ViewerTrackingService ViewerTracker
 @inject ViewerDbService ViewerDb
+@inject GenerationStatusService GenStatus
 @implements IDisposable
 
 <PageTitle>Countdown to August 5th</PageTitle>
@@ -139,7 +140,26 @@
         <!-- Art attribution / generating state -->
         @if (_art is null)
         {
-            <div class="art-credit generating">@(_isHistorical ? "no art for this day" : "generating today's art…")</div>
+            @if (!_isHistorical && _genProgress is not null)
+            {
+                <div class="gen-status">
+                    <div class="gen-status-phase">@_genProgress.Phase</div>
+                    @if (_genProgress.MaxAttempts > 0)
+                    {
+                        <div class="gen-status-bar">
+                            <div class="gen-status-fill" style="width:@((double)_genProgress.Attempt / _genProgress.MaxAttempts * 100)%"></div>
+                        </div>
+                        @if (_genProgress.LastScore.HasValue)
+                        {
+                            <div class="gen-status-score">last score @_genProgress.LastScore.Value.ToString("F1")/10</div>
+                        }
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="art-credit generating">@(_isHistorical ? "no art for this day" : "generating today's art…")</div>
+            }
         }
         else
         {
@@ -225,6 +245,8 @@
     private DateOnly _viewingDate;
     private bool _isHistorical;
 
+    private GenerationProgress? _genProgress;
+
     private DailyArt? _art;
     private string? _svgContent;
     private WeatherEffect? _weather;
@@ -248,6 +270,8 @@
         {
             ArtCache.OnArtGenerated += HandleArtGenerated;
             ViewerTracker.OnViewersUpdated += HandleViewersUpdated;
+            GenStatus.OnChanged += HandleGenStatusChanged;
+            _genProgress = GenStatus.Current;
 
             // Show whatever is already in the cache (non-blocking)
             var (viewers, total) = ViewerTracker.GetCached();
@@ -525,11 +549,21 @@
         return $"left:{left}%;top:{top}%;animation-delay:{delay}ms;animation-duration:{dur}ms;font-size:{size}px;";
     }
 
+    private void HandleGenStatusChanged(GenerationProgress? progress)
+    {
+        InvokeAsync(() =>
+        {
+            _genProgress = progress;
+            StateHasChanged();
+        });
+    }
+
     public void Dispose()
     {
         _clockCts?.Cancel();
         _clockCts?.Dispose();
         ArtCache.OnArtGenerated -= HandleArtGenerated;
         ViewerTracker.OnViewersUpdated -= HandleViewersUpdated;
+        GenStatus.OnChanged -= HandleGenStatusChanged;
     }
 }

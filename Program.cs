@@ -116,6 +116,7 @@ builder.Services.AddSingleton<TimeAndDateHolidayService>();
 builder.Services.AddSingleton<GeoLocationService>();
 builder.Services.AddSingleton<ViewerDbService>();
 builder.Services.AddSingleton<ViewerTrackingService>();
+builder.Services.AddSingleton<GenerationStatusService>();
 builder.Services.AddScoped<ArtGenerationService>();
 builder.Services.AddSingleton<PhotoService>();
 builder.Services.AddScoped<WeatherService>();

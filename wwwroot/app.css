@@ -467,6 +467,44 @@ body::before {
     50%       { opacity: 0.7; }
 }
 
+/* ── Generation status ────────────────────────────────────────────────────── */
+.gen-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+}
+
+.gen-status-phase {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    opacity: 0.55;
+    animation: credit-pulse 2s ease-in-out infinite;
+}
+
+.gen-status-bar {
+    width: 120px;
+    height: 3px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.gen-status-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6366f1, #a78bfa);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+    box-shadow: 0 0 6px #6366f188;
+}
+
+.gen-status-score {
+    font-size: 0.65rem;
+    opacity: 0.4;
+    font-variant-numeric: tabular-nums;
+}
+
 
 /* ── Viewer sidebar ───────────────────────────────────────────────────────── */
 .viewer-sidebar {
