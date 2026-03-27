@@ -82,11 +82,10 @@ public class ReplicateImageService
             if (status == "succeeded")
             {
                 // Output is an array of URLs; take the first
-                var outputUrl = pollDoc.RootElement
-                    .GetProperty("output")
-                    .EnumerateArray()
-                    .First()
-                    .GetString()
+                var outputEl = pollDoc.RootElement.GetProperty("output");
+                var outputUrl = outputEl.ValueKind == JsonValueKind.Array
+                    ? outputEl.EnumerateArray().First().GetString()
+                    : outputEl.GetString()
                     ?? throw new InvalidOperationException("No output URL in succeeded prediction");
 
                 _logger.LogInformation("Prediction {Id} succeeded, downloading image from {Url}", predId, outputUrl);
