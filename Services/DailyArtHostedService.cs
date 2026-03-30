@@ -30,6 +30,8 @@ public class DailyArtHostedService : BackgroundService
             try
             {
                 await Task.Delay(delay, stoppingToken);
+                // Safety: wait another minute to ensure the date has rolled over
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
             catch (OperationCanceledException)
             {
