@@ -19,7 +19,7 @@ A public holidays API is queried to find every celebration happening somewhere i
 The current conditions in Lehi, Utah are fetched from [Open-Meteo](https://open-meteo.com/) — temperature, precipitation, wind, and WMO weather code. This is translated into a weather effect type (sun, rain, snow, storm, fog, wind, heat, aurora) and an intensity value from 0 to 1.
 
 **3. Claude writes the prompt** ✍️
-Claude Sonnet 4.6 receives the holiday context and weather data. It writes a 250–350 word image generation prompt describing a complete Bob Ross oil painting scene — sky, mountains, trees, water, a culturally specific focal element, real Bob Ross paint colors, and lighting conditions.
+Claude AI Sonnet 4.6 receives the holiday context and weather data. It writes a 250–350 word image generation prompt describing a complete Bob Ross oil painting scene — sky, mountains, trees, water, a culturally specific focal element, real Bob Ross paint colors, and lighting conditions.
 
 **4. Flux 2 Pro generates the image** 🖼️
 The prompt is sent to [Replicate](https://replicate.com)'s API where `black-forest-labs/flux-2-pro` renders a 1008×1008 PNG. If the image scores below 7.5/10, a revised attempt is made. Up to 3 attempts; the best result wins.
