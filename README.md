@@ -64,7 +64,7 @@ Every page load geolocates the visitor via ip-api.com (country + US state) and l
 | Holidays | Public Holidays API |
 | Geolocation | ip-api.com |
 | Database | SQLite via EF Core (visitor tracking) |
-| Flags | flagcdn.com (country + US state subdivision flags) |
+| Flags | [flagcdn.com](https://flagcdn.com/) (country + US state subdivision flags) |
 | Infrastructure | Proxmox VE, Debian LXC container, systemd |
 | Networking | Cloudflare Tunnel (no open ports, no port forwarding) |
 | CI/CD | GitHub Actions → SSH deploy to LXC |
