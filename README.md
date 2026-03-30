@@ -78,12 +78,3 @@ The app runs inside a Debian LXC container on a Proxmox homelab server. A Cloudf
 Every push to `master` triggers a GitHub Actions workflow that SSHes into the server, runs `dotnet publish`, copies the output into the container, and restarts the systemd service. API keys are stored as GitHub Secrets and written to `/etc/homecountdown.env` at deploy time.
 
 Art files survive deploys — PNG, MP4, JSON, and SQLite are stored at `/var/lib/homecountdown/art-cache/` and mounted into the container independently of the app binary.
-
----
-
-## 👥 Contributors
-
-| Name | Role | Profile |
-|---|---|---|
-| **smarterskipper** | Lead Architect & Developer | [GitHub](https://github.com/smarterskipper) |
-| **Gemini** | AI Support & System Debugger | [Google AI](https://deepmind.google/technologies/gemini/) |
