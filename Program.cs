@@ -203,6 +203,33 @@ app.MapGet("/auth/approve", async (string token, ApprovalService approval) =>
         : Results.Content("<html><body style='font-family:sans-serif;background:#0f0f1a;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0'><div style='text-align:center'><div style='font-size:3rem'>⚠️</div><h2>Token invalid or expired.</h2></div></body></html>", "text/html");
 });
 
+// Admin: generate art for a specific date
+app.MapGet("/admin/generate-art", async (string date, IServiceProvider services) =>
+{
+    if (!DateOnly.TryParse(date, out var d))
+        return Results.BadRequest("Invalid date format. Use yyyy-MM-dd");
+
+    _ = Task.Run(async () =>
+    {
+        using var scope = services.CreateScope();
+        var cache = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.ArtCacheService>();
+        var holidayService = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.HolidayService>();
+        var weatherService = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.WeatherService>();
+        var artGen = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.ArtGenerationService>();
+        var tadService = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.TimeAndDateHolidayService>();
+
+        var weather = cache.GetWeatherForDate(d) ?? await weatherService.GenerateAndCacheAsync(d);
+        var tadHolidays = await tadService.GetHolidaysAsync(d);
+        var holiday = tadService.PickBest(tadHolidays, d)
+            ?? holidayService.GetHolidayForDate(d)
+            ?? holidayService.GetFallbackHoliday(d);
+
+        await artGen.GenerateAndCacheAsync(d, holiday, weather);
+    });
+
+    return Results.Ok(new { message = $"Art generation started for {date}" });
+});
+
 // Deny a pending user
 app.MapGet("/auth/deny", async (string token, ApprovalService approval) =>
 {
