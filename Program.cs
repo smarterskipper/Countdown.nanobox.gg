@@ -166,6 +166,7 @@ app.Use(async (ctx, next) =>
     var path = ctx.Request.Path.Value ?? "";
     var ext = Path.GetExtension(path);
     var isPublic = path.StartsWith("/auth",       StringComparison.OrdinalIgnoreCase)
+                || path.StartsWith("/admin",      StringComparison.OrdinalIgnoreCase)
                 || path.StartsWith("/_blazor",    StringComparison.OrdinalIgnoreCase)
                 || path.StartsWith("/_framework", StringComparison.OrdinalIgnoreCase)
                 || path.StartsWith("/_content",   StringComparison.OrdinalIgnoreCase)

@@ -142,7 +142,7 @@ public partial class TimeAndDateHolidayService
             var cells = CellRegex().Matches(row.Value);
             if (cells.Count < 3) continue;
 
-            // First cell: date like "Mar 26"
+            // First cell: date like "Mar 26" (may be <th> or <td>)
             var dateText = StripTagsRegex()
                 .Replace(cells[0].Groups[1].Value, "").Trim();
 
@@ -182,7 +182,7 @@ public partial class TimeAndDateHolidayService
     [GeneratedRegex(@"<tr[^>]*>(.*?)</tr>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
     private static partial Regex TableRowRegex();
 
-    [GeneratedRegex(@"<td[^>]*>(.*?)</td>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    [GeneratedRegex(@"<t[hd][^>]*>(.*?)</t[hd]>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
     private static partial Regex CellRegex();
 
     [GeneratedRegex(@"<[^>]+>")]

@@ -44,20 +44,6 @@
         </div>
 
         <div class="about-feature">
-            <div class="about-feature-icon">🎬</div>
-            <div class="about-feature-body">
-                <div class="about-feature-title">The painting comes alive</div>
-                <div class="about-feature-desc">
-                    After each painting is scored, it's passed to MiniMax Video 01 Live —
-                    an AI video model that animates still images into richly detailed looping videos.
-                    Water ripples, trees sway in the breeze, clouds drift across the sky.
-                    The background you see isn't a photo or a zoom effect. It's a Bob Ross
-                    painting, genuinely moving.
-                </div>
-            </div>
-        </div>
-
-        <div class="about-feature">
             <div class="about-feature-icon">🌤️</div>
             <div class="about-feature-body">
                 <div class="about-feature-title">Painted with real weather</div>
@@ -222,25 +208,9 @@
         <div class="about-pipeline-step">
             <div class="about-pipeline-num">06</div>
             <div class="about-pipeline-body">
-                <div class="about-pipeline-title">MiniMax Video animates it</div>
-                <div class="about-pipeline-desc">
-                    The winning PNG is encoded as a base64 data URI and passed directly to
-                    minimax/video-01-live on Replicate. A motion prompt guides the model —
-                    water rippling, leaves swaying, clouds drifting — tuned to the painting's
-                    theme. MiniMax generates a high-quality looping MP4 with genuine scene
-                    motion, not just camera movement. The video is injected into the page via
-                    JavaScript, completely outside Blazor's render cycle so the per-second
-                    clock updates can never reset playback.
-                </div>
-            </div>
-        </div>
-
-        <div class="about-pipeline-step">
-            <div class="about-pipeline-num">07</div>
-            <div class="about-pipeline-body">
                 <div class="about-pipeline-title">Everything is cached locally</div>
                 <div class="about-pipeline-desc">
-                    The PNG, MP4, weather JSON, and art metadata are all written to disk on
+                    The PNG, weather JSON, and art metadata are all written to disk on
                     the homelab server. The app never re-generates what it already has.
                     The Gallery reads directly from this file cache — no database needed for art.
                 </div>
@@ -248,7 +218,7 @@
         </div>
 
         <div class="about-pipeline-step">
-            <div class="about-pipeline-num">08</div>
+            <div class="about-pipeline-num">07</div>
             <div class="about-pipeline-body">
                 <div class="about-pipeline-title">Viewers are tracked in SQLite</div>
                 <div class="about-pipeline-desc">
@@ -299,19 +269,6 @@
         </div>
 
         <div class="about-tech-block">
-            <div class="about-tech-block-name">MiniMax Video 01 Live (via Replicate)</div>
-            <div class="about-tech-block-desc">
-                MiniMax Video 01 Live takes a single still image and generates a high-quality
-                video with genuine scene motion — not camera zoom, but actual water rippling,
-                foliage swaying, and sky movement. The PNG is passed as a base64 data URI directly
-                in the API request. The output MP4 is cached on disk and served as a full-screen
-                looping background. To survive Blazor's per-second re-renders, the video element
-                is created and managed entirely by a small JavaScript function in app.js — Blazor
-                never touches it after mount.
-            </div>
-        </div>
-
-        <div class="about-tech-block">
             <div class="about-tech-block-name">Open-Meteo</div>
             <div class="about-tech-block-desc">
                 Open-Meteo is a free, open-source weather API with no key required.
@@ -323,12 +280,12 @@
         </div>
 
         <div class="about-tech-block">
-            <div class="about-tech-block-name">SQLite (via EF Core)</div>
+            <div class="about-tech-block-name">SQLite</div>
             <div class="about-tech-block-desc">
                 Viewer tracking data lives in a local SQLite database. Each page view writes a row
-                with IP hash, country, US state, and timestamp. Entity Framework Core handles
-                migrations and queries. SQLite was chosen for simplicity — no server to manage,
-                file lives on disk alongside the art cache, survives container restarts.
+                with IP hash, country, US state, and timestamp. Raw SQL via Microsoft.Data.Sqlite
+                keeps things simple and dependency-light. The database file lives on disk alongside
+                the art cache — no server to manage, survives container restarts.
             </div>
         </div>
 
@@ -356,11 +313,11 @@
         <div class="about-tech-block">
             <div class="about-tech-block-name">GitHub Actions (CI/CD)</div>
             <div class="about-tech-block-desc">
-                Every push to master triggers a GitHub Actions workflow that SSH's into the
-                homelab server, pulls the latest code, runs dotnet publish, copies the output
-                into the container via lxc-attach, and restarts the systemd service.
-                Environment variables (API keys, cache paths) are stored as GitHub Secrets
-                and written into a .env file on the server at deploy time.
+                Every push to master triggers a GitHub Actions workflow on a self-hosted runner
+                that lives directly inside the LXC container. The runner checks out the code,
+                runs dotnet publish, swaps the output into the live directory, and restarts
+                the systemd service. Environment variables (API keys, cache paths) are stored
+                as GitHub Secrets and written into an env file on deploy.
             </div>
         </div>
 
@@ -371,12 +328,11 @@
         <div class="about-section-label">Built with</div>
         <div class="about-tech-row">
             <span class="about-tech-chip">Flux 2 Pro</span>
-            <span class="about-tech-chip">MiniMax Video 01 Live</span>
             <span class="about-tech-chip">Claude Sonnet 4.6</span>
             <span class="about-tech-chip">Blazor Server</span>
             <span class="about-tech-chip">Replicate API</span>
             <span class="about-tech-chip">Open-Meteo</span>
-            <span class="about-tech-chip">SQLite + EF Core</span>
+            <span class="about-tech-chip">SQLite</span>
             <span class="about-tech-chip">Proxmox LXC</span>
             <span class="about-tech-chip">Cloudflare Tunnel</span>
             <span class="about-tech-chip">GitHub Actions</span>
