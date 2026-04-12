@@ -212,20 +212,32 @@ app.MapGet("/admin/generate-art", async (string date, IServiceProvider services)
 
     _ = Task.Run(async () =>
     {
-        using var scope = services.CreateScope();
-        var cache = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.ArtCacheService>();
-        var holidayService = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.HolidayService>();
-        var weatherService = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.WeatherService>();
-        var artGen = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.ArtGenerationService>();
-        var tadService = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.TimeAndDateHolidayService>();
+        try
+        {
+            using var scope = services.CreateScope();
+            var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("AdminArtGen");
+            logger.LogInformation("Admin art generation starting for {Date}", d);
 
-        var weather = cache.GetWeatherForDate(d) ?? await weatherService.GenerateAndCacheAsync(d);
-        var tadHolidays = await tadService.GetHolidaysAsync(d);
-        var holiday = tadService.PickBest(tadHolidays, d)
-            ?? holidayService.GetHolidayForDate(d)
-            ?? holidayService.GetFallbackHoliday(d);
+            var cache = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.ArtCacheService>();
+            var holidayService = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.HolidayService>();
+            var weatherService = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.WeatherService>();
+            var artGen = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.ArtGenerationService>();
+            var tadService = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.TimeAndDateHolidayService>();
 
-        await artGen.GenerateAndCacheAsync(d, holiday, weather);
+            var weather = cache.GetWeatherForDate(d) ?? await weatherService.GenerateAndCacheAsync(d);
+            var tadHolidays = await tadService.GetHolidaysAsync(d);
+            var holiday = tadService.PickBest(tadHolidays, d)
+                ?? holidayService.GetHolidayForDate(d)
+                ?? holidayService.GetFallbackHoliday(d);
+
+            await artGen.GenerateAndCacheAsync(d, holiday, weather);
+            logger.LogInformation("Admin art generation completed for {Date}", d);
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("AdminArtGen");
+            logger.LogError(ex, "Admin art generation failed for {Date}", d);
+        }
     });
 
     return Results.Ok(new { message = $"Art generation started for {date}" });
