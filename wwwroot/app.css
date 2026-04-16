@@ -478,6 +478,32 @@ body::before {
 }
 
 
+/* ── Place info bubble ────────────────────────────────────────────────────── */
+.place-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    margin-top: 0.35rem;
+    margin-bottom: 0.1rem;
+}
+
+.place-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.95);
+    text-shadow: 0 1px 8px rgba(0,0,0,0.95), 0 2px 16px rgba(0,0,0,0.7);
+    letter-spacing: 0.04em;
+}
+
+.place-weather {
+    font-size: 0.68rem;
+    font-weight: 400;
+    color: rgba(255,255,255,0.75);
+    text-shadow: 0 1px 6px rgba(0,0,0,0.9);
+    letter-spacing: 0.03em;
+}
+
 /* ── Art credit ───────────────────────────────────────────────────────────── */
 .art-credit {
     font-size: 0.72rem;

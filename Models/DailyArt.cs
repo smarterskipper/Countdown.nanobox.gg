@@ -5,10 +5,9 @@ namespace HomelabCountdown.Models;
 public class DailyArt
 {
     public DateOnly Date { get; set; }
-    public string HolidayName { get; set; } = "";
-    public string HolidayLocalName { get; set; } = "";
-    public string CountryCode { get; set; } = "";
-    public string CountryName { get; set; } = "";
+    public string PlaceName { get; set; } = "";
+    public string PlaceDescription { get; set; } = "";
+    public string WeatherSummary { get; set; } = "";
     public string SvgFileName { get; set; } = "";       // relative filename inside art-cache/
     public string ScreenshotFileName { get; set; } = ""; // relative filename inside art-cache/
     public string PrimaryColor { get; set; } = "#6366f1";

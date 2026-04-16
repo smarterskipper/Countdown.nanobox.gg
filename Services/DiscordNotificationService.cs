@@ -24,15 +24,14 @@ public class DiscordNotificationService
 
         try
         {
-            var flag = GetFlag(art.CountryCode);
             var payload = new
             {
                 embeds = new[]
                 {
                     new
                     {
-                        title = $"{flag} Today's art is ready — {art.HolidayName}",
-                        description = $"**{art.CountryName}** · {art.Date:MMMM d, yyyy}",
+                        title = $"🏔️ Today's art is ready — {art.PlaceName}",
+                        description = $"**{art.PlaceDescription}** · {art.Date:MMMM d, yyyy}\n{art.WeatherSummary}",
                         color = HexToInt(art.AccentColor),
                         fields = new[]
                         {
@@ -122,6 +121,4 @@ public class DiscordNotificationService
         catch { return 0x6366f1; }
     }
 
-    private static string GetFlag(string code) => code.Length != 2 ? "🌍" :
-        string.Concat(code.ToUpperInvariant().Select(c => char.ConvertFromUtf32(c + 0x1F1A5)));
 }

@@ -52,8 +52,8 @@ public class ArtCacheService
         await File.WriteAllTextAsync(MetaPath(art.Date),
             JsonSerializer.Serialize(art, new JsonSerializerOptions { WriteIndented = true }));
 
-        _logger.LogInformation("Cached art for {Date}: {Holiday} ({Country}), score {Score}",
-            art.Date, art.HolidayName, art.CountryCode, art.FinalScore);
+        _logger.LogInformation("Cached art for {Date}: {Place}, score {Score}",
+            art.Date, art.PlaceName, art.FinalScore);
 
         OnArtGenerated?.Invoke(art);
     }
@@ -73,8 +73,8 @@ public class ArtCacheService
         await File.WriteAllTextAsync(MetaPath(art.Date),
             JsonSerializer.Serialize(art, new JsonSerializerOptions { WriteIndented = true }));
 
-        _logger.LogInformation("Cached art for {Date}: {Holiday} ({Country}), score {Score}",
-            art.Date, art.HolidayName, art.CountryCode, art.FinalScore);
+        _logger.LogInformation("Cached art for {Date}: {Place}, score {Score}",
+            art.Date, art.PlaceName, art.FinalScore);
 
         OnArtGenerated?.Invoke(art);
     }

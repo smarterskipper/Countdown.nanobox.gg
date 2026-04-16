@@ -126,6 +126,18 @@
                 </div>
             }
 
+            <!-- Place + weather info bubble -->
+            @if (_art is not null)
+            {
+                <div class="place-info">
+                    <span class="place-name">@_art.PlaceName</span>
+                    @if (!string.IsNullOrEmpty(_art.WeatherSummary))
+                    {
+                        <span class="place-weather">@_art.WeatherSummary</span>
+                    }
+                </div>
+            }
+
             <!-- Art attribution / generating state -->
             @if (_art is null)
             {

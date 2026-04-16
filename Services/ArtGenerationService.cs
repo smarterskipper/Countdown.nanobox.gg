@@ -32,7 +32,7 @@ public partial class ArtGenerationService
         _logger = logger;
     }
 
-    public async Task<DailyArt> GenerateAndCacheAsync(DateOnly date, HolidayInfo holiday, WeatherEffect? weather = null)
+    public async Task<DailyArt> GenerateAndCacheAsync(DateOnly date, PlaceInfo place, WeatherEffect? weather = null)
     {
         var existing = _cache.GetArtForDate(date);
         if (existing is not null)
@@ -41,8 +41,8 @@ public partial class ArtGenerationService
             return existing;
         }
 
-        _logger.LogInformation("Generating art for {Date}: {Holiday} ({Country})",
-            date, holiday.Name, holiday.CountryName);
+        _logger.LogInformation("Generating art for {Date}: {Place}",
+            date, place.Name);
 
         byte[]? image = null;
         ArtScore? score = null;
@@ -58,7 +58,7 @@ public partial class ArtGenerationService
             _status.Update($"Building prompt… (attempt {attempt} of {MaxAttempts})", attempt, MaxAttempts, bestScore?.Score);
 
             // Step 1: Claude writes a rich image prompt
-            var imagePrompt = await BuildImagePromptAsync(holiday, weather, critique, attempt);
+            var imagePrompt = await BuildImagePromptAsync(place, weather, critique, attempt);
 
             // Step 2: Replicate Flux generates the image
             _status.Update($"Painting with Flux… (attempt {attempt})", attempt, MaxAttempts, bestScore?.Score);
@@ -66,7 +66,7 @@ public partial class ArtGenerationService
 
             // Step 3: Claude scores the result
             _status.Update($"Scoring… (attempt {attempt})", attempt, MaxAttempts, bestScore?.Score);
-            score = await ScoreImageAsync(image, holiday);
+            score = await ScoreImageAsync(image, place);
 
             _logger.LogInformation("Attempt {Attempt} score: {Score}/10 — {Critique}", attempt, score.Score, score.Critique);
 
@@ -98,14 +98,13 @@ public partial class ArtGenerationService
         var art = new DailyArt
         {
             Date = date,
-            HolidayName = holiday.Name,
-            HolidayLocalName = holiday.LocalName,
-            CountryCode = holiday.CountryCode,
-            CountryName = holiday.CountryName,
+            PlaceName = place.Name,
+            PlaceDescription = place.Description,
+            WeatherSummary = weather?.Description ?? "",
             PrimaryColor = score?.PrimaryColor ?? "#6366f1",
             SecondaryColor = score?.SecondaryColor ?? "#8b5cf6",
             AccentColor = score?.AccentColor ?? "#f59e0b",
-            Theme = score?.Theme ?? holiday.Name,
+            Theme = score?.Theme ?? place.Name,
             AttemptCount = attempt,
             FinalScore = score?.Score ?? 0,
             FinalCritique = critique
@@ -120,10 +119,10 @@ public partial class ArtGenerationService
     // ── Prompt builder ────────────────────────────────────────────────────────
 
     private async Task<string> BuildImagePromptAsync(
-        HolidayInfo holiday, WeatherEffect? weather, string previousCritique, int attempt)
+        PlaceInfo place, WeatherEffect? weather, string previousCritique, int attempt)
     {
         var weatherDesc = weather is not null
-            ? $"Current weather in Lehi, Utah: {weather.Description} (intensity {weather.Intensity:F2})"
+            ? $"Current weather at {place.Name}: {weather.Description} (intensity {weather.Intensity:F2})"
             : "";
 
         var critiqueNote = attempt > 1 && !string.IsNullOrEmpty(previousCritique)
@@ -133,13 +132,13 @@ public partial class ArtGenerationService
         var metaPrompt = $"""
             You are an expert AI art director writing a detailed image generation prompt for Flux 1.1 Pro.
             Your prompt must produce a breathtaking, museum-quality oil painting in the style of Bob Ross
-            that is OVERFLOWING with animals — both real and fantastical. Animals are the STAR of this painting.
+            that captures a real place in Utah. Animals are the STAR of this painting.
 
             Painting subject:
-            Holiday: {holiday.Name}
-            Local name: {holiday.LocalName}
-            Country: {holiday.CountryName}
-            Date: {holiday.Date:MMMM d, yyyy}
+            Place: {place.Name}
+            Description: {place.Description}
+            Location: Utah, USA
+            Date: {place.Date:MMMM d, yyyy}
             {weatherDesc}
             {critiqueNote}
 
@@ -150,31 +149,34 @@ public partial class ArtGenerationService
 
             2. SCENE COMPOSITION (describe all of these):
                - Sky: specific cloud formations, lighting conditions, time of day, sun/moon position
-               - Background: 2-3 mountain ridgelines receding into atmospheric haze
-               - Midground: dense evergreen forest with Bob Ross happy little trees
-               - Water: if applicable (lake, river, ocean) with reflections
-               - Foreground: rich ground detail — grass, wildflowers, rocks, fallen logs
-               - Cultural focal element: ONE iconic visual symbol from {holiday.CountryName}
-                 specific to {holiday.Name} (be specific and culturally accurate)
+               - Background: the iconic landscape features that make {place.Name} recognizable —
+                 {place.Description}
+               - Midground: terrain, vegetation, and geological features specific to this Utah location
+               - Water: if applicable (rivers, lakes, reservoirs) with reflections
+               - Foreground: rich ground detail — desert wildflowers, red rock, sagebrush, fallen logs,
+                 snow, or whatever is authentic to this specific landscape
+               - Landmark: ONE iconic visual feature that makes {place.Name} instantly recognizable
 
             3. WILDLIFE (REQUIRED — woven naturally into the scene):
-               Include 3–5 real animals that belong naturally in this landscape. They should feel like
-               you spotted them on a nature walk — subtle and believable, not cartoon or posed.
-               Examples: a deer grazing at the forest edge, a hawk circling overhead, a fox slipping
-               between trees, an owl perched half-hidden in a branch, fish visible under clear water,
-               a rabbit at the meadow's edge. Place each one specifically in the scene and describe
-               what it is doing. The animals should feel DISCOVERED, not announced.
+               Include 3–5 real animals native to Utah that belong naturally in this landscape.
+               They should feel like you spotted them on a nature walk — subtle and believable.
+               Examples: a mule deer grazing near sage, a red-tailed hawk circling overhead, a coyote
+               trotting along a ridgeline, a pronghorn on a distant mesa, a golden eagle perched on
+               a sandstone spire, trout visible in clear mountain water, a jackrabbit among the brush.
+               Place each one specifically in the scene. Animals should feel DISCOVERED, not announced.
 
                Hidden in the scene — nearly invisible unless you look closely — is ONE mythical creature
                subtly camouflaged into a natural element: perhaps a dragon's silhouette mistaken for
-               a storm cloud, a unicorn half-hidden in mist at the forest edge, a sea serpent whose
-               back ripples look like waves, or a phoenix whose tail feathers blend into sunset colors.
+               a storm cloud, a thunderbird whose wings blend into canyon walls, a serpent whose back
+               ripples look like desert sand, or a phoenix whose tail feathers blend into sunset colors.
                Do NOT call it out — just place it naturally so a careful viewer might notice it.
 
-            4. WEATHER INTEGRATION: {(weather is not null ? $"Current weather: {weather.Description} — show this visually in the scene." : "Describe natural seasonal atmosphere.")}
+            4. WEATHER INTEGRATION: {(weather is not null ? $"Current weather: {weather.Description} — show this visually in the scene." : "Describe natural seasonal atmosphere for Utah.")}
 
             5. COLOR PALETTE: Specify actual Bob Ross colors by name — Phthalo Blue, Titanium White,
-               Sap Green, Van Dyke Brown, Cadmium Yellow, Indian Yellow, Alizarin Crimson, etc.
+               Sap Green, Van Dyke Brown, Cadmium Yellow, Indian Yellow, Alizarin Crimson, Bright Red,
+               etc. Choose colors that capture Utah's landscape — red rock, desert gold, sage green,
+               alpine blue, sandstone orange.
 
             6. LIGHTING: Describe the specific light quality — golden hour, overcast diffused,
                moonlit, stormy dramatic, etc.
@@ -195,7 +197,7 @@ public partial class ArtGenerationService
             Temperature = 0.9m
         });
 
-        var imagePrompt = response.Content.OfType<TextContent>().FirstOrDefault()?.Text?.Trim() ?? holiday.Name;
+        var imagePrompt = response.Content.OfType<TextContent>().FirstOrDefault()?.Text?.Trim() ?? place.Name;
 
         _logger.LogInformation("=== GENERATED FLUX PROMPT (attempt {Attempt}) ===\n{Prompt}\n=== END PROMPT ===",
             attempt, imagePrompt);
@@ -205,17 +207,17 @@ public partial class ArtGenerationService
 
     // ── Scoring ───────────────────────────────────────────────────────────────
 
-    private async Task<ArtScore> ScoreImageAsync(byte[] imagePng, HolidayInfo holiday)
+    private async Task<ArtScore> ScoreImageAsync(byte[] imagePng, PlaceInfo place)
     {
         var base64 = Convert.ToBase64String(imagePng);
 
         var prompt = $$"""
-            You are an art critic evaluating an AI-generated painting for this holiday:
-            Holiday: {{holiday.Name}} ({{holiday.CountryName}})
+            You are an art critic evaluating an AI-generated painting of a Utah landscape:
+            Place: {{place.Name}} — {{place.Description}}
 
             Score the image 1–10 based on:
             - Visual beauty and painterly quality (3 pts)
-            - Cultural relevance and symbolism for this holiday (3 pts)
+            - Accuracy to the Utah landscape and place character (3 pts)
             - Composition and depth (2 pts)
             - Color harmony and atmosphere (2 pts)
 

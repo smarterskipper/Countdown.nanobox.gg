@@ -1,5 +1,3 @@
-using HomelabCountdown.Models;
-
 namespace HomelabCountdown.Services;
 
 public class DailyArtHostedService : BackgroundService
@@ -48,32 +46,26 @@ public class DailyArtHostedService : BackgroundService
         {
             using var scope = _services.CreateScope();
             var cache = scope.ServiceProvider.GetRequiredService<ArtCacheService>();
-            var holidayService = scope.ServiceProvider.GetRequiredService<HolidayService>();
-
-            // Generate weather first so it can inform the SVG painting
-            var weatherService = scope.ServiceProvider.GetRequiredService<WeatherService>();
-            var weatherEffect = cache.GetWeatherForDate(date)
-                ?? await weatherService.GenerateAndCacheAsync(date);
 
             // Generate art
             var existingArt = cache.GetArtForDate(date);
             if (existingArt is null)
             {
+                // 1. Pick a random Utah place for this date
+                var placeService = scope.ServiceProvider.GetRequiredService<UtahPlaceService>();
+                var place = placeService.GetPlaceForDate(date);
+
+                // 2. Fetch weather at that place's coordinates
+                var weatherService = scope.ServiceProvider.GetRequiredService<WeatherService>();
+                var weatherEffect = cache.GetWeatherForDate(date)
+                    ?? await weatherService.GenerateAndCacheAsync(date, place.Latitude, place.Longitude, place.Name);
+
+                _logger.LogInformation("Generating art for {Date}: {Place}",
+                    date, place.Name);
+
+                // 3. Generate art
                 var artGen = scope.ServiceProvider.GetRequiredService<ArtGenerationService>();
-
-                // 1. Try timeanddate.com (real observances, cultural days, etc.)
-                var tadService = scope.ServiceProvider.GetRequiredService<TimeAndDateHolidayService>();
-                var tadHolidays = await tadService.GetHolidaysAsync(date);
-                var holiday = tadService.PickBest(tadHolidays, date)
-                    // 2. Fall back to Nager.Date official public holidays
-                    ?? holidayService.GetHolidayForDate(date)
-                    // 3. Last resort: seasonal/astronomical context
-                    ?? holidayService.GetFallbackHoliday(date);
-
-                _logger.LogInformation("Generating art for {Date}: {Holiday} in {Country}",
-                    date, holiday.Name, holiday.CountryName);
-
-                var art = await artGen.GenerateAndCacheAsync(date, holiday, weatherEffect);
+                var art = await artGen.GenerateAndCacheAsync(date, place, weatherEffect);
                 var discord = scope.ServiceProvider.GetRequiredService<DiscordNotificationService>();
                 await discord.NotifyArtGeneratedAsync(art);
             }

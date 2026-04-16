@@ -10,10 +10,6 @@ public class WeatherService
 {
     private static readonly DateOnly Target = new(2026, 8, 5);
 
-    // Lehi, UT coordinates
-    private const double LeahiLat  = 40.3916;
-    private const double LeahiLon  = -111.8507;
-
     private readonly AnthropicClient _claude;
     private readonly ArtCacheService _cache;
     private readonly HttpClient _http;
@@ -29,7 +25,7 @@ public class WeatherService
 
     public WeatherEffect? GetWeatherForDate(DateOnly date) => _cache.GetWeatherForDate(date);
 
-    public async Task<WeatherEffect> GenerateAndCacheAsync(DateOnly date)
+    public async Task<WeatherEffect> GenerateAndCacheAsync(DateOnly date, double lat = 40.3916, double lon = -111.8507, string placeName = "Lehi, UT")
     {
         var existing = _cache.GetWeatherForDate(date);
         if (existing is not null) return existing;
@@ -39,11 +35,11 @@ public class WeatherService
         // For today, use real weather from Open-Meteo (free, no key required)
         if (date == DateOnly.FromDateTime(DateTime.Today))
         {
-            var real = await FetchRealWeatherAsync(date, daysRemaining);
+            var real = await FetchRealWeatherAsync(date, daysRemaining, lat, lon, placeName);
             if (real is not null)
             {
                 await _cache.SaveWeatherAsync(real);
-                _logger.LogInformation("Real weather for {Date}: {Type} in Lehi, UT", date, real.Type);
+                _logger.LogInformation("Real weather for {Date}: {Type} in {Place}", date, real.Type, placeName);
                 return real;
             }
         }
@@ -125,12 +121,12 @@ public class WeatherService
 
     // ── Real weather from Open-Meteo (Lehi, UT) ────────────────────────────
 
-    private async Task<WeatherEffect?> FetchRealWeatherAsync(DateOnly date, int daysRemaining)
+    private async Task<WeatherEffect?> FetchRealWeatherAsync(DateOnly date, int daysRemaining, double lat, double lon, string placeName)
     {
         try
         {
             var url = $"https://api.open-meteo.com/v1/forecast" +
-                      $"?latitude={LeahiLat}&longitude={LeahiLon}" +
+                      $"?latitude={lat}&longitude={lon}" +
                       $"&current=weather_code,temperature_2m,wind_speed_10m" +
                       $"&timezone=America%2FDenver&forecast_days=1";
 
@@ -144,14 +140,14 @@ public class WeatherService
             var tempF = tempC * 9.0 / 5.0 + 32.0;
 
             var (type, color) = MapCode(code, tempC, wind);
-            var desc = $"{WeatherLabel(code, tempC, wind)} in Lehi, UT · {tempF:F0}°F ({tempC:F0}°C)";
+            var desc = $"{WeatherLabel(code, tempC, wind)} · {tempF:F0}°F ({tempC:F0}°C)";
 
             return new WeatherEffect
             {
                 Date          = date,
                 DaysRemaining = daysRemaining,
                 Type          = type,
-                Location      = "Lehi, UT",
+                Location      = placeName,
                 Connection    = desc,
                 Description   = desc,
                 Intensity     = 0.65,

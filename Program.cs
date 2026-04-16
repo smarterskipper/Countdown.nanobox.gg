@@ -111,8 +111,7 @@ builder.Services.AddSingleton<ArtCacheService>();
 builder.Services.AddSingleton<PlaywrightScreenshotService>();
 builder.Services.AddSingleton<DiscordNotificationService>();
 builder.Services.AddSingleton<ApprovalService>();
-builder.Services.AddScoped<HolidayService>();
-builder.Services.AddSingleton<TimeAndDateHolidayService>();
+builder.Services.AddSingleton<UtahPlaceService>();
 builder.Services.AddSingleton<GeoLocationService>();
 builder.Services.AddSingleton<ViewerDbService>();
 builder.Services.AddSingleton<ViewerTrackingService>();
@@ -219,18 +218,15 @@ app.MapGet("/admin/generate-art", async (string date, IServiceProvider services)
             logger.LogInformation("Admin art generation starting for {Date}", d);
 
             var cache = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.ArtCacheService>();
-            var holidayService = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.HolidayService>();
+            var placeService = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.UtahPlaceService>();
             var weatherService = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.WeatherService>();
             var artGen = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.ArtGenerationService>();
-            var tadService = scope.ServiceProvider.GetRequiredService<HomelabCountdown.Services.TimeAndDateHolidayService>();
 
-            var weather = cache.GetWeatherForDate(d) ?? await weatherService.GenerateAndCacheAsync(d);
-            var tadHolidays = await tadService.GetHolidaysAsync(d);
-            var holiday = tadService.PickBest(tadHolidays, d)
-                ?? holidayService.GetHolidayForDate(d)
-                ?? holidayService.GetFallbackHoliday(d);
+            var place = placeService.GetPlaceForDate(d);
+            var weather = cache.GetWeatherForDate(d)
+                ?? await weatherService.GenerateAndCacheAsync(d, place.Latitude, place.Longitude, place.Name);
 
-            await artGen.GenerateAndCacheAsync(d, holiday, weather);
+            await artGen.GenerateAndCacheAsync(d, place, weather);
             logger.LogInformation("Admin art generation completed for {Date}", d);
         }
         catch (Exception ex)
