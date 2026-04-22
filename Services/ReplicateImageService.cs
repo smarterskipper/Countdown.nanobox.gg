@@ -5,6 +5,16 @@ using System.Text.Json;
 namespace HomelabCountdown.Services;
 
 /// <summary>
+/// Thrown when Replicate rejects a prediction because the input or output
+/// tripped its safety filter (error code E005). Callers can catch this to
+/// rewrite the prompt and retry.
+/// </summary>
+public sealed class ReplicateSafetyException : Exception
+{
+    public ReplicateSafetyException(string message) : base(message) { }
+}
+
+/// <summary>
 /// Calls the Replicate API to generate images via Flux 2 Pro.
 /// </summary>
 public class ReplicateImageService
@@ -92,6 +102,8 @@ public class ReplicateImageService
             if (status is "failed" or "canceled")
             {
                 var error = pollDoc.RootElement.TryGetProperty("error", out var e) ? e.GetString() : "unknown";
+                if (error is not null && error.Contains("E005", StringComparison.Ordinal))
+                    throw new ReplicateSafetyException(error);
                 throw new InvalidOperationException($"Prediction {predId} {status}: {error}");
             }
         }

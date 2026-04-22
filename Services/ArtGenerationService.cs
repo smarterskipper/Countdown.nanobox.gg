@@ -10,6 +10,7 @@ namespace HomelabCountdown.Services;
 public partial class ArtGenerationService
 {
     private const int MaxAttempts = 3;
+    private const int MaxSafetyRetries = 2;
     private const double PassScore = 7.5;
 
     private readonly AnthropicClient _claude;
@@ -60,9 +61,9 @@ public partial class ArtGenerationService
             // Step 1: Claude writes a rich image prompt
             var imagePrompt = await BuildImagePromptAsync(place, weather, critique, attempt);
 
-            // Step 2: Replicate Flux generates the image
+            // Step 2: Replicate Flux generates the image (with safety-filter retry)
             _status.Update($"Painting with Flux… (attempt {attempt})", attempt, MaxAttempts, bestScore?.Score);
-            image = await _replicate.GenerateImageAsync(imagePrompt);
+            image = await GenerateImageWithSafetyRetryAsync(imagePrompt, attempt, bestScore?.Score);
 
             // Step 3: Claude scores the result
             _status.Update($"Scoring… (attempt {attempt})", attempt, MaxAttempts, bestScore?.Score);
@@ -203,6 +204,80 @@ public partial class ArtGenerationService
             attempt, imagePrompt);
 
         return imagePrompt;
+    }
+
+    // ── Safety-filter retry ───────────────────────────────────────────────────
+
+    private async Task<byte[]> GenerateImageWithSafetyRetryAsync(string prompt, int attempt, double? lastScore)
+    {
+        var currentPrompt = prompt;
+        for (var safetyAttempt = 0; ; safetyAttempt++)
+        {
+            try
+            {
+                return await _replicate.GenerateImageAsync(currentPrompt);
+            }
+            catch (ReplicateSafetyException ex) when (safetyAttempt < MaxSafetyRetries)
+            {
+                _logger.LogWarning(
+                    "Flux flagged prompt/output as sensitive (safety retry {Retry}/{Max}): {Error}",
+                    safetyAttempt + 1, MaxSafetyRetries, ex.Message);
+                _status.Update(
+                    $"Sanitizing prompt (safety retry {safetyAttempt + 1}/{MaxSafetyRetries})…",
+                    attempt, MaxAttempts, lastScore);
+                currentPrompt = await SanitizePromptAsync(currentPrompt, ex.Message, safetyAttempt + 1);
+            }
+        }
+    }
+
+    private async Task<string> SanitizePromptAsync(string originalPrompt, string error, int safetyAttempt)
+    {
+        var escalation = safetyAttempt == 1
+            ? "Soften or remove any language that could trigger a safety filter while keeping the scene intact."
+            : "Be aggressive: strip the hidden mythical-creature section entirely, remove any predator/prey or hunting cues, and use only neutral, peaceful wildlife and scenery.";
+
+        var metaPrompt = $"""
+            Flux's safety filter rejected the following image prompt with this error:
+            {error}
+
+            Rewrite the prompt so it passes the filter. Common triggers to watch for:
+            - Violence, weapons, blood, gore, death, hunting, predator-prey scenes
+            - Mythical creatures or silhouettes that could read as threatening
+              (dragons, serpents, thunderbirds, phoenixes)
+            - Dramatic/stormy language that pairs with the above
+            - Named people, copyrighted characters, children
+
+            {escalation}
+
+            Keep the core subject: a Bob Ross oil painting of a Utah landscape with native wildlife.
+            Keep roughly the same length and structure. Output ONLY the rewritten prompt — no
+            explanation, no title, no quotes around it.
+
+            Original prompt:
+            {originalPrompt}
+            """;
+
+        var response = await _claude.Messages.GetClaudeMessageAsync(new MessageParameters
+        {
+            Messages = [new Message(RoleType.User, metaPrompt)],
+            Model = AnthropicModels.Claude46Sonnet,
+            MaxTokens = 1536,
+            Stream = false,
+            Temperature = 0.5m
+        });
+
+        var sanitized = response.Content.OfType<TextContent>().FirstOrDefault()?.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(sanitized))
+        {
+            _logger.LogWarning("Sanitizer returned empty prompt, falling back to original");
+            return originalPrompt;
+        }
+
+        _logger.LogInformation(
+            "=== SANITIZED FLUX PROMPT (safety retry {Retry}) ===\n{Prompt}\n=== END SANITIZED ===",
+            safetyAttempt, sanitized);
+
+        return sanitized;
     }
 
     // ── Scoring ───────────────────────────────────────────────────────────────
